@@ -1,0 +1,15 @@
+# Rust's output directory
+target
+
+# Node
+node_modules
+npm-debug.log*
+package-lock.json
+
+# Local settings
+.soroban
+.stellar
+
+# macOS
+.DS_Store
+
