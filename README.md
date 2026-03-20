@@ -1,273 +1,287 @@
-# Permissionless Token Vesting Contract
+# 🚀 Token Vesting Contract
 
-A fully **permissionless** token vesting smart contract built on Soroban (Stellar). This contract allows anyone to create token vesting schedules and beneficiaries to claim their vested tokens without any admin roles or permissions required.
+### Blockchain-Based Token Locking & Gradual Release on Stellar
 
-## Core Philosophy: Permissionlessness
 
-This contract is designed with **zero permission gates**:
-- ✅ **Anyone** can create a vesting plan (no whitelist, no admin approval)
-- ✅ **Any beneficiary** can claim their vested tokens (no permissions or roles)
-- ✅ **Anyone** can view vesting plan details and vested amounts
-- ✅ **No admin functions** that restrict participation
-- ✅ No upgradeable logic (immutable once deployed)
 
-Unlike traditional voting or governance systems that might have "add candidate" functions (which introduce permission requirements), this contract is purely permissionless by design.
+Token Vesting Contract enables secure, time-based token distribution using smart contracts on the Stellar Soroban network.
 
----
 
-## Key Features
 
-### 1. Permissionless Vesting Plan Creation
-```rust
-pub fn create_vesting_plan(
-    env: Env,
+**Live Contract • Architecture • Pipeline • Quick Start**
+
+
+
+## 📖 What is this?
+
+Token Vesting Contract is a decentralized financial infrastructure designed for managing token distribution in a transparent and trustless way. It allows organizations, startups, and DAOs to lock tokens and release them gradually over time without relying on intermediaries.
+
+Instead of transferring tokens all at once, this smart contract enforces a predefined vesting schedule.
+
+Provide vesting parameters like total amount, start time, and duration — and the contract automatically:
+
+* Locks tokens securely inside the contract
+* Tracks vesting progress over time
+* Calculates the vested amount dynamically
+* Allows beneficiaries to claim tokens gradually
+* Ensures transparency via blockchain records
+* Prevents early withdrawal before vesting conditions are met
+
+
+
+## 🔑 Why Soroban?
+
+### The Problem
+
+Traditional vesting systems face several challenges:
+
+* High transaction fees
+* Slow execution speeds
+* Manual or centralized tracking
+* Risk of manipulation or human error
+
+
+
+
+### Why We Chose Soroban
+
+| Feature               | Traditional Chains | With Soroban                 |
+| --------------------- | ------------------ | ---------------------------- |
+| Transaction Fees      | High/Unpredictable | ✅ Near-Zero & Predictable    |
+| Execution Speed       | Slow               | ✅ Fast & Efficient           |
+| Smart Contract Safety | Varies             | ✅ Rust-based Type Safety     |
+| Storage               | Expensive          | ✅ Optimized Instance Storage |
+| Ecosystem             | Fragmented         | ✅ Unified Stellar Network    |
+
+
+
+
+## ⚙️ Soroban Features Used
+
+* **Instance Storage (`instance()`)** — Efficient storage of vesting data
+* **Rust Type Safety** — Reduces contract vulnerabilities
+* **Symbol Keys** — Lightweight storage identifiers
+* **Env SDK** — Direct interaction with blockchain state
+
+
+
+
+## 🏗️ Architecture
+
+### High-Level Flow
+
+* **Creator** initializes the contract with vesting parameters
+* **Smart Contract** locks and manages tokens
+* **Stellar Blockchain** stores immutable vesting data
+* **Beneficiary** claims tokens over time
+* **Release Function** calculates and distributes vested tokens
+
+
+
+
+## 🛠️ Tech Stack & Tools
+
+* **Rust** — Smart contract development
+* **Soroban SDK** — Contract framework
+* **Stellar CLI** — Build, deploy, and interact
+* **Stellar Network** — Blockchain infrastructure
+
+
+
+
+
+## 🔗 Deployed Smart Contract
+
+**Token Vesting Contract Address:**
+https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CARYWO4GSPJJSC6DJQHR6JYHPTZSJTCOKV63ZDKHH4ENNS7GMWFNUJBE;;
+
+Example:
+https://stellar.expert/explorer/testnet/tx/f3721f1f0274210527166482d07d3c88eb944917a5f71b299760b8762299bcee
+
+
+<img width="1892" height="936" alt="Screenshot 2026-03-19 144415" src="https://github.com/user-attachments/assets/5bbb4b8a-961c-4da4-86ed-fda7fb8e60a1" />
+
+<img width="1882" height="935" alt="Screenshot 2026-03-20 151351" src="https://github.com/user-attachments/assets/646b4526-b8e9-4a43-a899-c43fc9c775d5" />
+
+
+
+
+
+## 🎯 Vision & Use Cases
+
+### Vision
+
+To create a fair, automated, and transparent token distribution system that eliminates trust issues and ensures long-term sustainability.
+
+
+
+
+### Key Use Cases
+
+* **Startup Token Distribution** — Vesting for founders and teams
+* **Investor Lockups** — Prevent early token dumping
+* **DAO Treasury Management** — Controlled fund release
+* **Employee Incentives** — Performance-based rewards
+
+
+
+
+## 🏗️ Pipeline (Development Plan)
+
+### 1. Smart Contract Functions
+
+**init(...)**
+
+* Initializes vesting parameters
+* Stores beneficiary, total amount, start time, and duration
+
+**vested_amount(...)**
+
+* Calculates unlocked tokens
+* Based on elapsed time
+
+**release(...)**
+
+* Allows claiming of vested tokens
+* Updates released amount
+
+**get_data(...)**
+
+* Returns complete vesting details
+
+
+
+
+### 2. Data Structure
+
+```
+VestingData {
     beneficiary: Address,
-    token: Address,
     total_amount: i128,
+    released_amount: i128,
     start_time: u64,
-    duration: u64,
-    cliff_duration: u64,
-) -> u64
-```
-
-**Anyone** can create a vesting plan for any token and beneficiary:
-- `beneficiary`: The account that will receive vested tokens
-- `token`: The token contract address
-- `total_amount`: Total tokens to be vested
-- `start_time`: Unix timestamp when vesting begins
-- `duration`: Total vesting period in seconds
-- `cliff_duration`: Cliff period before any vesting occurs (optional)
-
-Returns a unique `plan_id` for the vesting plan.
-
-### 2. Permissionless Token Claims
-```rust
-pub fn claim_vested(env: Env, plan_id: u64) -> i128
-```
-
-**Any beneficiary** can claim their vested tokens:
-- Calculates releasable amount based on vesting schedule
-- Transfers tokens from contract to beneficiary
-- Updates the released amount tracking
-- Returns the amount of tokens released
-
-### 3. Query Functions (Read-Only)
-
-#### Vested Amount
-```rust
-pub fn vested_amount(env: Env, plan_id: u64) -> i128
-```
-Returns total amount vested so far (including already claimed tokens).
-
-#### Releasable Amount
-```rust
-pub fn releasable_amount(env: Env, plan_id: u64) -> i128
-```
-Returns amount available to claim now (vested - already released).
-
-#### Get Plan Details
-```rust
-pub fn get_plan(env: Env, plan_id: u64) -> VestingPlan
-```
-Returns full vesting plan information.
-
-#### Get Plan Count
-```rust
-pub fn get_plan_count(env: Env) -> u64
-```
-Returns total number of vesting plans created.
-
----
-
-## Vesting Plan Structure
-
-```rust
-pub struct VestingPlan {
-    pub beneficiary: Address,      // Who receives the tokens
-    pub token: Address,            // Token contract address
-    pub total_amount: i128,        // Total tokens to vest
-    pub released_amount: i128,     // Tokens already claimed
-    pub start_time: u64,           // Vesting start timestamp
-    pub duration: u64,             // Total vesting duration (seconds)
-    pub cliff_duration: u64,       // Period before any vesting (seconds)
-    pub created_at: u64,           // Plan creation timestamp
+    duration: u64
 }
 ```
 
----
 
-## Vesting Mechanics
 
-### Linear Vesting with Cliff
 
-The contract implements linear vesting with an optional cliff period:
+## 🔐 Access Control & Security
 
-1. **Before Cliff**: No tokens are vested (vested_amount = 0)
-2. **At and After Cliff**: Tokens vest linearly based on elapsed time
-3. **After Duration**: All tokens are vested
+* **Time-Based Locking** — No early withdrawals
+* **Immutable Ledger** — Data cannot be modified
+* **Transparent Logic** — Fully verifiable on-chain
 
-**Formula**:
-```
-if current_time < start_time + cliff_duration:
-    vested = 0
-else if current_time >= start_time + duration:
-    vested = total_amount
-else:
-    elapsed = current_time - start_time
-    vested = total_amount * elapsed / duration
-```
+**Current Limitation:**
 
----
+* Open access (demo version)
 
-## Example Use Cases
+**Future Improvements:**
 
-### 1. Employee Stock Options
-```
-Creator creates vesting plan:
-- Beneficiary: Employee address
-- Token: Company stock token
-- Amount: 1,000 tokens
-- Start: Today
-- Duration: 4 years (1,461 days)
-- Cliff: 1 year
+* Role-Based Access Control (RBAC)
+* Multi-user support
 
-Employee can claim quarterly as tokens vest.
-```
 
-### 2. Community Token Distribution
-```
-Anyone can create plans for:
-- Airdrop recipients
-- Community members
-- Token stakeholders
 
-No whitelist needed - fully open participation.
-```
 
-### 3. Project Funding Releases
-```
-Creator locks tokens in vesting:
-- Beneficiary: Project wallet
-- Token: Stablecoin
-- Amount: $1,000,000
-- Duration: 3 months
+## 🚧 Roadmap & Future Plans
 
-Project claims as time milestones are reached.
-```
+* Add cliff-based vesting
+* Support multiple beneficiaries
+* Token contract integration
+* Frontend dashboard (React + Soroban)
+* Admin controls
 
----
 
-## Storage Model
 
-The contract uses **persistent storage** for high-performance access:
-- `PCNT`: Counter for total vesting plans created
-- `PLAN_{id}`: Individual vesting plan data keyed by plan ID
 
-This allows efficient lookups and scales to thousands of vesting plans.
-
----
-
-## Security Considerations
-
-### Permissionless Security
-
-Since this contract is permissionless, security focuses on:
-1. **Correct math**: Vesting calculations are deterministic
-2. **Token transfers**: Uses Soroban's token standard interface
-3. **No flash loan attacks**: Vesting is time-based, not balance-based
-4. **No reentrancy**: Single-threaded contract execution
-
-### Token Integration
-
-The contract requires:
-- Beneficiary or token creator has approved the contract to transfer tokens
-- Token contract follows Soroban token standard interface
-
----
-
-## Building and Testing
-
-```bash
-# Navigate to contract directory
-cd contracts/hello-world
-
-# Build the contract
-cargo build --target wasm32-unknown-unknown --release
-
-# Run tests
-cargo test --lib
-
-# Build with optimizations for deployment
-cargo build --target wasm32-unknown-unknown --release --profile release
-```
-
----
-
-## Deployment
-
-The contract can be deployed to Soroban testnet or mainnet:
-
-```bash
-soroban contract deploy --wasm target/wasm32-unknown-unknown/release/hello_world.wasm
-```
-
----
-
-## Why Permissionless Architecture?
-
-Traditional vesting contracts often include:
-- ❌ Admin roles for plan creation
-- ❌ Whitelists for beneficiaries
-- ❌ Permission tiers for different actions
-- ❌ Owner-controlled configuration
-
-This contract **eliminates all permission gates** because:
-
-1. **Direct Value**: Token vesting doesn't require gatekeeping
-2. **Market Efficiency**: Anyone can create plans for any token/beneficiary pair
-3. **Censorship Resistance**: No single point of control
-4. **Composability**: Can be used as building block in other protocols
-5. **Predictability**: Fixed logic, no admin discretion
-
----
-
-## Design Choices
-
-1. **Linear Vesting**: Supports linear vesting with optional cliff
-2. **Immutable Plans**: Once created, vesting terms cannot be changed
-3. **No Cancellation**: Plans run to completion
-4. **No Partial Unlock**: Only claimable amount can be withdrawn per transaction
-5. **Individual Custody**: Works with direct address ownership
-
----
-
-## Tech Stack
-
-- **Language**: Rust
-- **Framework**: Soroban SDK v25
-- **Blockchain**: Stellar (Soroban)
-- **Target**: WASM (wasm32-unknown-unknown)
-
----
-
-## Project Structure
+## 📁 Project Structure
 
 ```
-TokenVestingContract/
-├── Cargo.toml                  # Workspace configuration
-├── README.md                   # This file
-└── contracts/
-    └── hello-world/            # Vesting contract
-        ├── Cargo.toml
-        ├── Makefile
-        ├── src/
-        │   ├── lib.rs         # Main contract implementation
-        │   └── test.rs        # Contract tests
+.
+├── README.md
+└── contract
+    ├── Cargo.toml
+    └── src
+        └── lib.rs
 ```
 
----
 
-## License
 
-MIT License - Open source and available for integration
 
+## ⚙️ Environment Setup & Installation
+
+### A) Prerequisites
+
+Install Rust:
+
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Install Soroban CLI:
+
+```
+cargo install --locked soroban-cli
+```
+
+Add WASM target:
+
+```
+rustup target add wasm32-unknown-unknown
+```
+
+
+
+
+### B) Build Contract
+
+```
+soroban contract build
+```
+
+Optimize (optional but recommended):
+
+```
+soroban contract optimize --wasm target/wasm32-unknown-unknown/release/contract.wasm
+```
+
+
+
+
+### C) Deployment & Invocation
+
+Deploy contract:
+
+```
+soroban contract deploy \
+  --wasm target/wasm32-unknown-unknown/release/contract.wasm \
+  --source <YOUR_ACCOUNT> \
+  --network testnet
+```
+
+Invoke contract:
+
+```
+soroban contract invoke \
+  --id <CONTRACT_ID> \
+  --source <SOURCE_ACCOUNT> \
+  --network testnet \
+  -- release --current_time <TIME>
+```
+
+
+
+## 👨‍💻 Author
+
+**Ranit Sarkar**
+
+Blockchain Enthusiast | Aspiring Developer
+
+Profile link : https://github.com/ranitsarkar5
+
+
+## 📄 License
+
+MIT License
