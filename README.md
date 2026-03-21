@@ -12,6 +12,7 @@ Token Vesting Contract enables secure, time-based token distribution using smart
 
 
 
+
 ## 📖 What is this?
 
 Token Vesting Contract is a decentralized financial infrastructure designed for managing token distribution in a transparent and trustless way. It allows organizations, startups, and DAOs to lock tokens and release them gradually over time without relying on intermediaries.
