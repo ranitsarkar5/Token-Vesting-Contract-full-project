@@ -93,6 +93,10 @@ Traditional vesting systems face several challenges:
 
 ## 🔗 Deployed Smart Contract
 
+WORKING APP: https://token-vesting-contract-full-project.vercel.app/
+
+
+
 **Token Vesting Contract Address:**
 https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CARYWO4GSPJJSC6DJQHR6JYHPTZSJTCOKV63ZDKHH4ENNS7GMWFNUJBE;;
 
