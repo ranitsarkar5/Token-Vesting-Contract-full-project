@@ -1,7 +1,6 @@
 # 🚀 Token Vesting Contract
 
-<!-- PASTE YOUR CI/CD PIPELINE BADGE OR SCREENSHOT BELOW -->
-![CI/CD Pipeline](PASTE_IMAGE_URL_HERE)
+
 
 ### Blockchain-Based Token Locking & Gradual Release on Stellar
 
