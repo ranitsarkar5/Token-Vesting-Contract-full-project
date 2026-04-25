@@ -261,6 +261,25 @@ Optimize (optional but recommended):
 soroban contract optimize --wasm target/wasm32-unknown-unknown/release/contract.wasm
 ```
 
+## 🧪 Testing
+
+The contract comes with a suite of automated tests to ensure security and reliability. The tests cover creating vesting plans, checking vested amounts before start times, and verifying cliff behavior.
+
+To run the smart contract tests locally:
+
+1. Navigate to the contract directory:
+   ```bash
+   cd contracts/hello-world
+   ```
+
+2. Run the tests using cargo:
+   ```bash
+   cargo test
+   ```
+
+You should see output indicating that all tests have passed successfully:
+
+  <img width="1103" height="226" alt="Screenshot 2026-04-25 230223" src="https://github.com/user-attachments/assets/d96210c8-7a3e-4636-a91b-3e53c669faf6" />
 
 
 
