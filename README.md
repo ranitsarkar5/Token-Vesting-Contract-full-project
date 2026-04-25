@@ -116,8 +116,11 @@ https://stellar.expert/explorer/testnet/tx/f3721f1f0274210527166482d07d3c88eb944
 
 ## 📱 Mobile Responsive View
 
-<!-- PASTE YOUR MOBILE RESPONSIVE VIEW SCREENSHOT BELOW -->
-<img width="400" alt="Mobile Responsive View" src="PASTE_IMAGE_URL_HERE" />
+<img width="576" height="1280" alt="image" src="https://github.com/user-attachments/assets/8698258a-1e90-4d77-ae4f-4d007a911a21" />
+
+
+<img width="576" height="1280" alt="image" src="https://github.com/user-attachments/assets/a274bc34-1f67-48c3-be0c-2c86ee62735b" />
+
 
 ## 🎯 Vision & Use Cases
 
