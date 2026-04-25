@@ -177,3 +177,6 @@ impl TokenVestingContract {
         );
     }
 }
+
+#[cfg(test)]
+mod test;

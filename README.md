@@ -93,11 +93,6 @@ Traditional vesting systems face several challenges:
 
 ## 🔗 Deployed Smart Contract
 
-WORKING APLICATION: https://token-vesting-contract-full-project.vercel.app/
-
-DEMO VIDEO:- https://drive.google.com/file/d/1OQaCOkDINofGVfruAJ0r7yeNbWYJqswW/view?usp=drive_link
-
-
 **Token Vesting Contract Address:**
 https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CARYWO4GSPJJSC6DJQHR6JYHPTZSJTCOKV63ZDKHH4ENNS7GMWFNUJBE;;
 
@@ -111,6 +106,8 @@ https://stellar.expert/explorer/testnet/tx/f3721f1f0274210527166482d07d3c88eb944
 <img width="1759" height="831" alt="Screenshot 2026-03-20 215748" src="https://github.com/user-attachments/assets/ab0c692e-8011-4bc9-8897-3e4c7bd99bc9" />
 
 <img width="1890" height="838" alt="Screenshot 2026-03-20 215810" src="https://github.com/user-attachments/assets/35089a26-edd5-4646-91ea-1336a7fde3b0" />
+
+
 
 
 
@@ -255,25 +252,6 @@ Optimize (optional but recommended):
 soroban contract optimize --wasm target/wasm32-unknown-unknown/release/contract.wasm
 ```
 
-## 🧪 Testing
-
-The contract comes with a suite of automated tests to ensure security and reliability. The tests cover creating vesting plans, checking vested amounts before start times, and verifying cliff behavior.
-
-To run the smart contract tests locally:
-
-1. Navigate to the contract directory:
-   ```bash
-   cd contracts/hello-world
-   ```
-
-2. Run the tests using cargo:
-   ```bash
-   cargo test
-   ```
-
-You should see output indicating that all tests have passed successfully:
-
-  <img width="1103" height="226" alt="Screenshot 2026-04-25 230223" src="https://github.com/user-attachments/assets/d96210c8-7a3e-4636-a91b-3e53c669faf6" />
 
 
 
@@ -299,6 +277,33 @@ soroban contract invoke \
 ```
 
 
+
+
+## 🧪 Testing
+
+The contract comes with a suite of automated tests to ensure security and reliability. The tests cover creating vesting plans, checking vested amounts before start times, and verifying cliff behavior.
+
+To run the smart contract tests locally:
+
+1. Navigate to the contract directory:
+   ```bash
+   cd contracts/hello-world
+   ```
+
+2. Run the tests using cargo:
+   ```bash
+   cargo test
+   ```
+
+You should see output indicating that all tests have passed successfully:
+```bash
+running 3 tests
+test test::test_create_vesting_plan ... ok
+test test::test_vested_amount_at_cliff ... ok
+test test::test_vested_amount_before_start ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+```
 
 ## 👨‍💻 Author
 
