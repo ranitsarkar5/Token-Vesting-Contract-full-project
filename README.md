@@ -115,14 +115,10 @@ https://stellar.expert/explorer/testnet/tx/f3721f1f0274210527166482d07d3c88eb944
 
 <img width="1890" height="838" alt="Screenshot 2026-03-20 215810" src="https://github.com/user-attachments/assets/35089a26-edd5-4646-91ea-1336a7fde3b0" />
 
+## 📱 Mobile Responsive View
+
 <!-- PASTE YOUR MOBILE RESPONSIVE VIEW SCREENSHOT BELOW -->
 <img width="400" alt="Mobile Responsive View" src="PASTE_IMAGE_URL_HERE" />
-
-
-
-
-
-
 
 ## 🎯 Vision & Use Cases
 
