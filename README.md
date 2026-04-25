@@ -93,8 +93,9 @@ Traditional vesting systems face several challenges:
 
 ## 🔗 Deployed Smart Contract
 
-WORKING APP: https://token-vesting-contract-full-project.vercel.app/
+WORKING APLICATION: https://token-vesting-contract-full-project.vercel.app/
 
+DEMO VIDEO:- https://drive.google.com/file/d/1OQaCOkDINofGVfruAJ0r7yeNbWYJqswW/view?usp=drive_link
 
 
 **Token Vesting Contract Address:**
@@ -112,7 +113,11 @@ https://stellar.expert/explorer/testnet/tx/f3721f1f0274210527166482d07d3c88eb944
 <img width="1890" height="838" alt="Screenshot 2026-03-20 215810" src="https://github.com/user-attachments/assets/35089a26-edd5-4646-91ea-1336a7fde3b0" />
 
 
-
+##  Test Execution Proof
+  Showing how the test cases are passed-
+  
+  
+  <img width="1103" height="226" alt="Screenshot 2026-04-25 230223" src="https://github.com/user-attachments/assets/d96210c8-7a3e-4636-a91b-3e53c669faf6" />
 
 
 
