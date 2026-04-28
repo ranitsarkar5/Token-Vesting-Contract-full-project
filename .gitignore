@@ -4,7 +4,6 @@ target
 # Node
 node_modules
 npm-debug.log*
-package-lock.json
 
 # Local settings
 .soroban
