@@ -1,113 +1,103 @@
-// Soroban Service - Mock implementation for demonstration
-// In production, replace with actual Soroban SDK contract calls
-
-const CONTRACT_ID = process.env.REACT_APP_CONTRACT_ID || 'DEMO_CONTRACT_ID';
-const NETWORK = process.env.REACT_APP_NETWORK || 'testnet';
+import { Client, networks } from 'token_vesting';
+import { signTransaction } from '@stellar/freighter-api';
 
 class SorobanService {
   constructor() {
-    this.contractId = CONTRACT_ID;
-    this.network = NETWORK;
-    this.plans = this.loadPlans();
+    this.client = new Client({
+      ...networks.testnet,
+      rpcUrl: 'https://soroban-testnet.stellar.org',
+    });
   }
 
-  loadPlans() {
-    try {
-      const stored = localStorage.getItem('vesting_plans');
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  }
-
-  savePlans() {
-    localStorage.setItem('vesting_plans', JSON.stringify(this.plans));
-  }
-
-  async createVestingPlan(beneficiary, token, amount, startTime, duration, cliffDuration) {
-    const planId = Object.keys(this.plans).length + 1;
-
-    const plan = {
-      id: planId,
+  async createVestingPlan(beneficiary, token, amount, startTime, duration, cliffDuration, walletAddress) {
+    // Convert to BigInt since the contract expects i128 and u64
+    const amountInt = BigInt(Math.floor(amount));
+    
+    const tx = await this.client.create_vesting_plan({
       beneficiary,
       token,
-      total_amount: amount,
-      released_amount: 0,
-      start_time: startTime,
-      duration,
-      cliff_duration: cliffDuration,
-      created_at: Math.floor(Date.now() / 1000),
-    };
+      total_amount: amountInt,
+      start_time: BigInt(startTime),
+      duration: BigInt(duration),
+      cliff_duration: BigInt(cliffDuration)
+    }, { publicKey: walletAddress });
 
-    this.plans[planId] = plan;
-    this.savePlans();
-
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return planId;
+    const response = await tx.signAndSend({ signTransaction });
+    return Number(response.result); // Returns plan ID
   }
 
   async getVestingPlan(planId) {
-    return this.plans[planId] || null;
+    try {
+      const tx = await this.client.get_plan({ plan_id: BigInt(planId) });
+      const plan = tx.result;
+      return {
+        id: planId,
+        beneficiary: plan.beneficiary,
+        token: plan.token,
+        total_amount: Number(plan.total_amount),
+        released_amount: Number(plan.released_amount),
+        start_time: Number(plan.start_time),
+        duration: Number(plan.duration),
+        cliff_duration: Number(plan.cliff_duration),
+        created_at: Number(plan.created_at)
+      };
+    } catch (e) {
+      console.error("Error fetching plan:", e);
+      return null;
+    }
+  }
+
+  async getReleasableAmount(planId) {
+    try {
+      const tx = await this.client.releasable_amount({ plan_id: BigInt(planId) });
+      return Number(tx.result);
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  async claimVestedTokens(planId, walletAddress) {
+    const tx = await this.client.claim_vested({ plan_id: BigInt(planId) }, { publicKey: walletAddress });
+    const response = await tx.signAndSend({ signTransaction });
+    return Number(response.result);
+  }
+
+  async getPlanCount() {
+    try {
+      const tx = await this.client.get_plan_count();
+      return Number(tx.result);
+    } catch (e) {
+      return 0;
+    }
   }
 
   calculateVestedAmount(plan) {
     if (!plan) return 0;
-
     const currentTime = Math.floor(Date.now() / 1000);
-
-    if (currentTime <= plan.start_time) {
-      return 0;
-    }
-
-    // Check cliff period
-    if (currentTime < plan.start_time + plan.cliff_duration) {
-      return 0;
-    }
-
-    // Fully vested
-    if (currentTime >= plan.start_time + plan.duration) {
-      return plan.total_amount;
-    }
-
-    // Linear vesting
+    if (currentTime <= plan.start_time) return 0;
+    if (currentTime < plan.start_time + plan.cliff_duration) return 0;
+    if (currentTime >= plan.start_time + plan.duration) return plan.total_amount;
+    
     const elapsed = currentTime - plan.start_time;
     return Math.floor((plan.total_amount * elapsed) / plan.duration);
   }
 
-  async getReleasableAmount(planId) {
-    const plan = this.plans[planId];
-    if (!plan) return 0;
-
-    const vested = this.calculateVestedAmount(plan);
-    return Math.max(0, vested - plan.released_amount);
-  }
-
-  async claimVestedTokens(planId) {
-    const plan = this.plans[planId];
-    if (!plan) throw new Error('Plan not found');
-
-    const releasable = await this.getReleasableAmount(planId);
-    if (releasable <= 0) return 0;
-
-    plan.released_amount += releasable;
-    this.savePlans();
-
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 600));
-    return releasable;
-  }
-
   async getAllPlans() {
-    return Object.values(this.plans);
+    const count = await this.getPlanCount();
+    const plans = [];
+    // plan IDs are 1-indexed
+    for (let i = 1; i <= count; i++) {
+      const plan = await this.getVestingPlan(i);
+      if (plan) {
+        plans.push(plan);
+      }
+    }
+    return plans;
   }
 
   async getPlansByBeneficiary(beneficiary) {
-    return Object.values(this.plans).filter(p => p.beneficiary === beneficiary);
-  }
-
-  async getPlanCount() {
-    return Object.keys(this.plans).length;
+    const allPlans = await this.getAllPlans();
+    return allPlans.filter(p => p.beneficiary === beneficiary);
   }
 }
 
