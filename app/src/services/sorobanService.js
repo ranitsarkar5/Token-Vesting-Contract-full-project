@@ -1,104 +1,219 @@
 /* global BigInt */
-import { Client, networks } from 'token_vesting';
+import * as StellarSdk from 'stellar-sdk';
 import { signTransaction } from '@stellar/freighter-api';
+
+const CONTRACT_ID = 'CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB';
+const RPC_URL = 'https://soroban-testnet.stellar.org';
+const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 
 class SorobanService {
   constructor() {
-    this.client = new Client({
-      ...networks.testnet,
-      rpcUrl: 'https://soroban-testnet.stellar.org',
-    });
+    this.rpc = new StellarSdk.rpc.Server(RPC_URL);
+    this.contractId = CONTRACT_ID;
   }
 
-  async createVestingPlan(beneficiary, token, amount, startTime, duration, cliffDuration, walletAddress) {
-    // Convert to BigInt since the contract expects i128 and u64
-    const amountInt = BigInt(Math.floor(amount));
-    
-    const tx = await this.client.create_vesting_plan({
-      beneficiary,
-      token,
-      total_amount: amountInt,
-      start_time: BigInt(startTime),
-      duration: BigInt(duration),
-      cliff_duration: BigInt(cliffDuration)
-    }, { publicKey: walletAddress });
+  // ──────────────────────────────────────────────
+  // READ OPERATIONS (free, no wallet needed)
+  // ──────────────────────────────────────────────
 
-    const response = await tx.signAndSend({ signTransaction });
-    return Number(response.result); // Returns plan ID
+  async getPlanCount() {
+    try {
+      const account = await this.rpc.getAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN');
+      const tx = new StellarSdk.TransactionBuilder(account, {
+        fee: '100',
+        networkPassphrase: NETWORK_PASSPHRASE,
+      })
+        .addOperation(
+          StellarSdk.Operation.invokeContractFunction({
+            contract: CONTRACT_ID,
+            function: 'get_plan_count',
+            args: [],
+          })
+        )
+        .setTimeout(30)
+        .build();
+
+      const sim = await this.rpc.simulateTransaction(tx);
+      if (StellarSdk.rpc.Api.isSimulationError(sim)) return 0;
+      const result = sim.result?.retval;
+      return result ? Number(StellarSdk.scValToNative(result)) : 0;
+    } catch (e) {
+      console.error('getPlanCount error:', e);
+      return 0;
+    }
   }
 
   async getVestingPlan(planId) {
     try {
-      const tx = await this.client.get_plan({ plan_id: BigInt(planId) });
-      const plan = tx.result;
+      const account = await this.rpc.getAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN');
+      const tx = new StellarSdk.TransactionBuilder(account, {
+        fee: '100',
+        networkPassphrase: NETWORK_PASSPHRASE,
+      })
+        .addOperation(
+          StellarSdk.Operation.invokeContractFunction({
+            contract: CONTRACT_ID,
+            function: 'get_plan',
+            args: [StellarSdk.nativeToScVal(BigInt(planId), { type: 'u64' })],
+          })
+        )
+        .setTimeout(30)
+        .build();
+
+      const sim = await this.rpc.simulateTransaction(tx);
+      if (StellarSdk.rpc.Api.isSimulationError(sim)) return null;
+      const result = sim.result?.retval;
+      if (!result) return null;
+
+      const native = StellarSdk.scValToNative(result);
       return {
         id: planId,
-        beneficiary: plan.beneficiary,
-        token: plan.token,
-        total_amount: Number(plan.total_amount),
-        released_amount: Number(plan.released_amount),
-        start_time: Number(plan.start_time),
-        duration: Number(plan.duration),
-        cliff_duration: Number(plan.cliff_duration),
-        created_at: Number(plan.created_at)
+        beneficiary: native.beneficiary?.toString() || '',
+        token: native.token?.toString() || '',
+        total_amount: Number(native.total_amount || 0),
+        released_amount: Number(native.released_amount || 0),
+        start_time: Number(native.start_time || 0),
+        duration: Number(native.duration || 0),
+        cliff_duration: Number(native.cliff_duration || 0),
+        created_at: Number(native.created_at || 0),
       };
     } catch (e) {
-      console.error("Error fetching plan:", e);
+      console.error(`getVestingPlan(${planId}) error:`, e);
       return null;
     }
-  }
-
-  async getReleasableAmount(planId) {
-    try {
-      const tx = await this.client.releasable_amount({ plan_id: BigInt(planId) });
-      return Number(tx.result);
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  async claimVestedTokens(planId, walletAddress) {
-    const tx = await this.client.claim_vested({ plan_id: BigInt(planId) }, { publicKey: walletAddress });
-    const response = await tx.signAndSend({ signTransaction });
-    return Number(response.result);
-  }
-
-  async getPlanCount() {
-    try {
-      const tx = await this.client.get_plan_count();
-      return Number(tx.result);
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  calculateVestedAmount(plan) {
-    if (!plan) return 0;
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (currentTime <= plan.start_time) return 0;
-    if (currentTime < plan.start_time + plan.cliff_duration) return 0;
-    if (currentTime >= plan.start_time + plan.duration) return plan.total_amount;
-    
-    const elapsed = currentTime - plan.start_time;
-    return Math.floor((plan.total_amount * elapsed) / plan.duration);
   }
 
   async getAllPlans() {
     const count = await this.getPlanCount();
     const plans = [];
-    // plan IDs are 1-indexed
     for (let i = 1; i <= count; i++) {
       const plan = await this.getVestingPlan(i);
-      if (plan) {
-        plans.push(plan);
-      }
+      if (plan) plans.push(plan);
     }
     return plans;
   }
 
   async getPlansByBeneficiary(beneficiary) {
-    const allPlans = await this.getAllPlans();
-    return allPlans.filter(p => p.beneficiary === beneficiary);
+    const all = await this.getAllPlans();
+    return all.filter(p => p.beneficiary === beneficiary);
+  }
+
+  calculateVestedAmount(plan) {
+    if (!plan) return 0;
+    const now = Math.floor(Date.now() / 1000);
+    if (now <= plan.start_time) return 0;
+    if (now < plan.start_time + plan.cliff_duration) return 0;
+    if (now >= plan.start_time + plan.duration) return plan.total_amount;
+    const elapsed = now - plan.start_time;
+    return Math.floor((plan.total_amount * elapsed) / plan.duration);
+  }
+
+  // ──────────────────────────────────────────────
+  // WRITE OPERATIONS (require wallet signing)
+  // ──────────────────────────────────────────────
+
+  async createVestingPlan(beneficiary, token, amount, startTime, duration, cliffDuration, walletAddress) {
+    const account = await this.rpc.getAccount(walletAddress);
+
+    const tx = new StellarSdk.TransactionBuilder(account, {
+      fee: '1000000',
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(
+        StellarSdk.Operation.invokeContractFunction({
+          contract: CONTRACT_ID,
+          function: 'create_vesting_plan',
+          args: [
+            StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
+            StellarSdk.nativeToScVal(token, { type: 'address' }),
+            StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
+            StellarSdk.nativeToScVal(BigInt(startTime), { type: 'u64' }),
+            StellarSdk.nativeToScVal(BigInt(duration), { type: 'u64' }),
+            StellarSdk.nativeToScVal(BigInt(cliffDuration), { type: 'u64' }),
+          ],
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    const simResult = await this.rpc.simulateTransaction(tx);
+    if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
+      throw new Error(`Simulation failed: ${simResult.error}`);
+    }
+    const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+    const txXdr = preparedTx.toXDR();
+
+    const signedXdr = await signTransaction(txXdr, {
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
+
+    const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+    const sendResult = await this.rpc.sendTransaction(signedTx);
+
+    if (sendResult.status === 'ERROR') {
+      throw new Error(`Transaction failed: ${sendResult.errorResult}`);
+    }
+
+    // Poll for result
+    let getResult;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      getResult = await this.rpc.getTransaction(sendResult.hash);
+      if (getResult.status !== 'NOT_FOUND') break;
+    }
+
+    if (getResult?.status === 'SUCCESS') {
+      return Number(StellarSdk.scValToNative(getResult.returnValue));
+    }
+    throw new Error('Transaction did not complete in time');
+  }
+
+  async claimVestedTokens(planId, walletAddress) {
+    const account = await this.rpc.getAccount(walletAddress);
+
+    const tx = new StellarSdk.TransactionBuilder(account, {
+      fee: '1000000',
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(
+        StellarSdk.Operation.invokeContractFunction({
+          contract: CONTRACT_ID,
+          function: 'claim_vested',
+          args: [StellarSdk.nativeToScVal(BigInt(planId), { type: 'u64' })],
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    const simResult = await this.rpc.simulateTransaction(tx);
+    if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
+      throw new Error(`Simulation failed: ${simResult.error}`);
+    }
+    const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+    const txXdr = preparedTx.toXDR();
+
+    const signedXdr = await signTransaction(txXdr, {
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
+
+    const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+    const sendResult = await this.rpc.sendTransaction(signedTx);
+
+    if (sendResult.status === 'ERROR') {
+      throw new Error(`Transaction failed: ${sendResult.errorResult}`);
+    }
+
+    let getResult;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      getResult = await this.rpc.getTransaction(sendResult.hash);
+      if (getResult.status !== 'NOT_FOUND') break;
+    }
+
+    if (getResult?.status === 'SUCCESS') {
+      return Number(StellarSdk.scValToNative(getResult.returnValue));
+    }
+    throw new Error('Transaction did not complete in time');
   }
 }
 
