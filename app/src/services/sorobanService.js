@@ -1,3 +1,4 @@
+/* global BigInt */
 import { Client, networks } from 'token_vesting';
 import { signTransaction } from '@stellar/freighter-api';
 
