@@ -46,7 +46,8 @@ function CreateVestingForm({ wallet }) {
         parseFloat(formData.amount),
         now,
         durationSeconds,
-        cliffSeconds
+        cliffSeconds,
+        wallet
       );
 
       setSuccess({ message: 'Vesting plan created successfully!', planId });
