@@ -291,31 +291,19 @@ soroban contract invoke \
 
 ## 🧪 Testing
 
-The contract comes with a suite of automated tests to ensure security and reliability. The tests cover creating vesting plans, checking vested amounts before start times, and verifying cliff behavior.
+The contract and frontend come with a suite of automated tests to ensure security and reliability.
 
-To run the smart contract tests locally:
-
-1. Navigate to the contract directory:
-   ```bash
-   cd contracts/hello-world
-   ```
-
-2. Run the tests using cargo:
-   ```bash
-   cargo test
-   ```
-
-You should see output indicating that all tests have passed successfully:
+### Smart Contract Tests
+Run the smart contract tests locally:
 ```bash
-running 3 tests
-test test::test_create_vesting_plan ... ok
-test test::test_vested_amount_at_cliff ... ok
-test test::test_vested_amount_before_start ... ok
-
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
-
+cd contracts/hello-world
+cargo test
 ```
-RUN PIC:-   <img width="1103" height="226" alt="Screenshot 2026-04-25 230223" src="https://github.com/user-attachments/assets/d96210c8-7a3e-4636-a91b-3e53c669faf6" />
+![Rust Tests Passing](https://github.com/user-attachments/assets/d96210c8-7a3e-4636-a91b-3e53c669faf6)
+
+### Frontend Tests
+The frontend includes 3 functional tests for UI integrity and wallet integration state.
+![Frontend Tests Passing](assets/test_output.png)
 
 ## 👨‍💻 Author
 
