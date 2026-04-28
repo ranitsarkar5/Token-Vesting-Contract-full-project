@@ -28,14 +28,17 @@ jobs:
       run: npm install && npm run build
 
     - name: Install Dependencies
-      run: npm install
+      run: npm install --legacy-peer-deps
 
     - name: Build Application
       run: npm run build
       env:
         CI: false
+        SKIP_PREFLIGHT_CHECK: true
+        GENERATE_SOURCEMAP: false
 
     - name: Run Tests
       run: npm test -- --watchAll=false --passWithNoTests
       env:
         CI: true
+        SKIP_PREFLIGHT_CHECK: true
