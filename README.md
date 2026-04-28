@@ -217,10 +217,9 @@ VestingData {
 ```
 .
 ├── README.md
-└── contract
-    ├── Cargo.toml
-    └── src
-        └── lib.rs
+├── frontend/           # React + Soroban integration
+└── contracts/          # Rust smart contracts
+    └── hello-world/    # Main vesting contract
 ```
 
 
