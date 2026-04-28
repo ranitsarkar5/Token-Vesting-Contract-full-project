@@ -56,7 +56,7 @@ function VestingDashboard({ wallet }) {
     setSuccessMsg(null);
 
     try {
-      const claimed = await sorobanService.claimVestedTokens(planId);
+      const claimed = await sorobanService.claimVestedTokens(planId, wallet);
       if (claimed > 0) {
         setSuccessMsg(`Claimed ${claimed.toFixed(2)} tokens from Plan #${planId}!`);
         loadPlans();
