@@ -1,6 +1,7 @@
 # 🚀 Token Vesting Contract
 
-
+[![Rust CI](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/actions/workflows/rust.yml/badge.svg)](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/actions/workflows/rust.yml)
+[![Frontend CI/CD](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/actions/workflows/frontend.yml/badge.svg)](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/actions/workflows/frontend.yml)
 
 ### Blockchain-Based Token Locking & Gradual Release on Stellar
 
@@ -101,10 +102,10 @@ DEMO VIDEO:- https://drive.google.com/file/d/1OQaCOkDINofGVfruAJ0r7yeNbWYJqswW/v
 
 
 **Token Vesting Contract Address:**
-https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CARYWO4GSPJJSC6DJQHR6JYHPTZSJTCOKV63ZDKHH4ENNS7GMWFNUJBE;;
+https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB;;
 
 Example:
-https://stellar.expert/explorer/testnet/tx/f3721f1f0274210527166482d07d3c88eb944917a5f71b299760b8762299bcee
+https://stellar.expert/explorer/testnet/tx/79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9
 
 
 <img width="1892" height="936" alt="Screenshot 2026-03-19 144415" src="https://github.com/user-attachments/assets/5bbb4b8a-961c-4da4-86ed-fda7fb8e60a1" />
