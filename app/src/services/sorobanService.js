@@ -18,8 +18,9 @@ class SorobanService {
 
   async getPlanCount() {
     try {
-      const account = await this.rpc.getAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN');
-      const tx = new StellarSdk.TransactionBuilder(account, {
+      // Use a valid dummy account for simulation to avoid 404s
+      const dummyAccount = new StellarSdk.Account('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', '0');
+      const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
         fee: '100',
         networkPassphrase: NETWORK_PASSPHRASE,
       })
@@ -45,8 +46,8 @@ class SorobanService {
 
   async getVestingPlan(planId) {
     try {
-      const account = await this.rpc.getAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN');
-      const tx = new StellarSdk.TransactionBuilder(account, {
+      const dummyAccount = new StellarSdk.Account('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', '0');
+      const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
         fee: '100',
         networkPassphrase: NETWORK_PASSPHRASE,
       })
