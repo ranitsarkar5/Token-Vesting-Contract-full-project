@@ -24,6 +24,7 @@ impl TokenVestingContract {
     /// Plan ID is auto-generated as counter-based index
     pub fn create_vesting_plan(
         env: Env,
+        creator: Address,
         beneficiary: Address,
         token: Address,
         total_amount: i128,
@@ -31,6 +32,9 @@ impl TokenVestingContract {
         duration: u64,
         cliff_duration: u64,
     ) -> u64 {
+        // Authenticate the creator
+        creator.require_auth();
+
         // Get the next plan ID
         let plan_count: u64 = env.storage()
             .persistent()
@@ -63,13 +67,14 @@ impl TokenVestingContract {
         // Increment plan counter
         env.storage().persistent().set(&symbol_short!("PCNT"), &plan_id);
         
-        // Transfer tokens from creator to contract (creator must approve first)
-        Self::transfer_token_from(env.clone(), token, env.current_contract_address(), total_amount);
+        // Transfer tokens from creator to contract
+        let client = soroban_sdk::token::Client::new(&env, &token);
+        client.transfer(&creator, &env.current_contract_address(), &total_amount);
         
         plan_id
     }
 
-    /// PERMISSIONLESS: Anyone can claim their vested tokens
+    /// PERMISSIONLESS: Anyone can claim their vested tokens (but they must be the beneficiary)
     pub fn claim_vested(env: Env, plan_id: u64) -> i128 {
         let mut plans: Map<u64, VestingPlan> = env.storage()
             .persistent()
@@ -78,6 +83,9 @@ impl TokenVestingContract {
         
         let mut plan = plans.get(plan_id).unwrap();
         
+        // Authenticate the beneficiary
+        plan.beneficiary.require_auth();
+
         // Calculate releasable amount
         let releasable = Self::releasable_amount(env.clone(), plan_id);
         
@@ -91,7 +99,8 @@ impl TokenVestingContract {
         env.storage().persistent().set(&symbol_short!("PLANS"), &plans);
         
         // Transfer tokens to beneficiary
-        Self::transfer_token(env.clone(), plan.token.clone(), plan.beneficiary.clone(), releasable);
+        let client = soroban_sdk::token::Client::new(&env, &plan.token);
+        client.transfer(&env.current_contract_address(), &plan.beneficiary, &releasable);
         
         releasable
     }
@@ -101,9 +110,12 @@ impl TokenVestingContract {
         let plans: Map<u64, VestingPlan> = env.storage()
             .persistent()
             .get(&symbol_short!("PLANS"))
-            .unwrap();
+            .unwrap_or(Map::new(&env));
         
-        let plan = plans.get(plan_id).unwrap();
+        let plan = match plans.get(plan_id) {
+            Some(p) => p,
+            None => return 0,
+        };
         
         let current_time = env.ledger().timestamp();
         
@@ -130,22 +142,25 @@ impl TokenVestingContract {
         let plans: Map<u64, VestingPlan> = env.storage()
             .persistent()
             .get(&symbol_short!("PLANS"))
-            .unwrap();
+            .unwrap_or(Map::new(&env));
         
-        let plan = plans.get(plan_id).unwrap();
+        let plan = match plans.get(plan_id) {
+            Some(p) => p,
+            None => return 0,
+        };
         
         let vested = Self::vested_amount(env.clone(), plan_id);
         vested - plan.released_amount
     }
 
     /// PERMISSIONLESS: Query vesting plan details
-    pub fn get_plan(env: Env, plan_id: u64) -> VestingPlan {
+    pub fn get_plan(env: Env, plan_id: u64) -> Option<VestingPlan> {
         let plans: Map<u64, VestingPlan> = env.storage()
             .persistent()
             .get(&symbol_short!("PLANS"))
-            .unwrap();
+            .unwrap_or(Map::new(&env));
         
-        plans.get(plan_id).unwrap()
+        plans.get(plan_id)
     }
 
     /// PERMISSIONLESS: Query total number of plans created
@@ -154,27 +169,6 @@ impl TokenVestingContract {
             .persistent()
             .get(&symbol_short!("PCNT"))
             .unwrap_or(0)
-    }
-
-    // Internal helper: Transfer token from account to contract
-    fn transfer_token_from(env: Env, token: Address, to: Address, amount: i128) {
-        let client = soroban_sdk::token::Client::new(&env, &token);
-        client.transfer_from(
-            &env.current_contract_address(),
-            &env.current_contract_address(),
-            &to,
-            &amount,
-        );
-    }
-
-    // Internal helper: Transfer token from contract to account
-    fn transfer_token(env: Env, token: Address, to: Address, amount: i128) {
-        let client = soroban_sdk::token::Client::new(&env, &token);
-        client.transfer(
-            &env.current_contract_address(),
-            &to,
-            &amount,
-        );
     }
 }
 

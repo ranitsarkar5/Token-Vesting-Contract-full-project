@@ -100,14 +100,20 @@ Traditional vesting systems face several challenges:
 
 **Demo Video:** [Watch on Google Drive](https://drive.google.com/file/d/1OQaCOkDINofGVfruAJ0r7yeNbWYJqswW/view?usp=drive_link)
 
-### 📍 Contract Address (Testnet)
+**Token Vesting Contract Address:**
 `CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB`
+[Explore on Stellar Lab](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB;;)
 
-**Explore on Stellar Lab:**
-[Stellar Lab - Contract Explorer](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB;;)
+**Example Token Address (XLM-Testnet):**
+`CDLZFC3SYJYDZT7K67VZ75HXZS65IROR64T6QYFJDZAAOKX6PVIYOZDL`
 
-**Example Transaction:**
-[Stellar Expert Explorer](https://stellar.expert/explorer/testnet/tx/79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9)
+**Example Transaction Hash:**
+[79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9](https://stellar.expert/explorer/testnet/tx/79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9)
+
+### 🔗 Inter-Contract Calls
+This contract implements advanced inter-contract communication via the **Soroban Token Interface**. It interacts with any standard token contract to:
+*   **Pull Tokens**: Securely transfers tokens from the creator to the vesting contract upon plan initialization.
+*   **Release Tokens**: Executes transfers from the contract's own balance to the beneficiary's address upon successful claim.
 
 
 <img width="1892" height="936" alt="Screenshot 2026-03-19 144415" src="https://github.com/user-attachments/assets/5bbb4b8a-961c-4da4-86ed-fda7fb8e60a1" />

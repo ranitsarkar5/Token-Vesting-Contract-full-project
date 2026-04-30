@@ -20,18 +20,19 @@ fn test_create_vesting_plan() {
     let client = TokenVestingContractClient::new(&env, &contract_id);
 
     let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
     let beneficiary = Address::generate(&env);
     
     let (token_id, token, token_admin) = create_token_contract(&env, &admin);
     
-    // Mint tokens to the contract and approve itself to bypass contract's transfer_from logic
-    token_admin.mint(&contract_id, &2_000_000);
-    token.approve(&contract_id, &contract_id, &2_000_000, &99999);
+    // Mint tokens to the creator
+    token_admin.mint(&creator, &2_000_000);
 
     let now = env.ledger().timestamp();
 
     // Create a vesting plan
     let plan_id = client.create_vesting_plan(
+        &creator,
         &beneficiary,
         &token_id,
         &1_000_000,
@@ -43,10 +44,14 @@ fn test_create_vesting_plan() {
     assert_eq!(plan_id, 1);
 
     // Verify plan was created
-    let plan = client.get_plan(&plan_id);
+    let plan = client.get_plan(&plan_id).unwrap();
     assert_eq!(plan.beneficiary, beneficiary);
     assert_eq!(plan.total_amount, 1_000_000);
     assert_eq!(plan.released_amount, 0);
+    
+    // Verify tokens were transferred to the contract
+    assert_eq!(token.balance(&contract_id), 1_000_000);
+    assert_eq!(token.balance(&creator), 1_000_000);
 }
 
 #[test]
@@ -58,16 +63,17 @@ fn test_vested_amount_before_start() {
     let client = TokenVestingContractClient::new(&env, &contract_id);
 
     let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
     let beneficiary = Address::generate(&env);
     
-    let (token_id, token, token_admin) = create_token_contract(&env, &admin);
-    token_admin.mint(&contract_id, &1_000_000);
-    token.approve(&contract_id, &contract_id, &1_000_000, &99999);
+    let (token_id, _token, token_admin) = create_token_contract(&env, &admin);
+    token_admin.mint(&creator, &1_000_000);
 
     let now = env.ledger().timestamp();
     let start_time = now + 1000;
 
     let plan_id = client.create_vesting_plan(
+        &creator,
         &beneficiary,
         &token_id,
         &1_000_000,
@@ -90,16 +96,17 @@ fn test_vested_amount_at_cliff() {
     let client = TokenVestingContractClient::new(&env, &contract_id);
 
     let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
     let beneficiary = Address::generate(&env);
     
-    let (token_id, token, token_admin) = create_token_contract(&env, &admin);
-    token_admin.mint(&contract_id, &1_000_000);
-    token.approve(&contract_id, &contract_id, &1_000_000, &99999);
+    let (token_id, _token, token_admin) = create_token_contract(&env, &admin);
+    token_admin.mint(&creator, &1_000_000);
 
     let now = env.ledger().timestamp();
     let cliff = 365 * 24 * 60 * 60; // 1 year cliff
 
     let plan_id = client.create_vesting_plan(
+        &creator,
         &beneficiary,
         &token_id,
         &1_000_000,
