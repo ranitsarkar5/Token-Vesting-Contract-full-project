@@ -18,8 +18,10 @@ class SorobanService {
 
   async getPlanCount() {
     try {
-      // Use a valid dummy account for simulation to avoid 404s
-      const dummyAccount = new StellarSdk.Account('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', '0');
+      // Use a random keypair for simulation to avoid account-not-found or malformed address errors
+      const tempKeypair = StellarSdk.Keypair.random();
+      const dummyAccount = new StellarSdk.Account(tempKeypair.publicKey(), '0');
+      
       const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
         fee: '100',
         networkPassphrase: NETWORK_PASSPHRASE,
@@ -46,7 +48,9 @@ class SorobanService {
 
   async getVestingPlan(planId) {
     try {
-      const dummyAccount = new StellarSdk.Account('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', '0');
+      const tempKeypair = StellarSdk.Keypair.random();
+      const dummyAccount = new StellarSdk.Account(tempKeypair.publicKey(), '0');
+      
       const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
         fee: '100',
         networkPassphrase: NETWORK_PASSPHRASE,
