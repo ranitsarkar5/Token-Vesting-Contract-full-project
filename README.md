@@ -225,7 +225,8 @@ VestingData {
 ```
 .
 ├── README.md
-├── app/                # React + Soroban integration
+├── app/                # Primary Frontend (Vercel Deployment)
+├── frontend/           # Duplicate Frontend (Legacy/Submission Requirement)
 └── contracts/          # Rust smart contracts
     └── hello-world/    # Main vesting contract
 ```
