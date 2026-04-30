@@ -96,16 +96,18 @@ Traditional vesting systems face several challenges:
 
 ## 🔗 Deployed Smart Contract
 
-WORKING APLICATION: https://token-vesting-contract-full-project.vercel.app/
+**Live DApp:** [token-vesting-contract-full-project.vercel.app](https://token-vesting-contract-full-project.vercel.app/)
 
-DEMO VIDEO:- https://drive.google.com/file/d/1OQaCOkDINofGVfruAJ0r7yeNbWYJqswW/view?usp=drive_link
+**Demo Video:** [Watch on Google Drive](https://drive.google.com/file/d/1OQaCOkDINofGVfruAJ0r7yeNbWYJqswW/view?usp=drive_link)
 
+### 📍 Contract Address (Testnet)
+`CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB`
 
-**Token Vesting Contract Address:**
-https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB;;
+**Explore on Stellar Lab:**
+[Stellar Lab - Contract Explorer](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB;;)
 
-Example:
-https://stellar.expert/explorer/testnet/tx/79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9
+**Example Transaction:**
+[Stellar Expert Explorer](https://stellar.expert/explorer/testnet/tx/79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9)
 
 
 <img width="1892" height="936" alt="Screenshot 2026-03-19 144415" src="https://github.com/user-attachments/assets/5bbb4b8a-961c-4da4-86ed-fda7fb8e60a1" />
