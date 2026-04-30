@@ -219,7 +219,7 @@ VestingData {
 ```
 .
 ├── README.md
-├── frontend/           # React + Soroban integration
+├── app/                # React + Soroban integration
 └── contracts/          # Rust smart contracts
     └── hello-world/    # Main vesting contract
 ```
