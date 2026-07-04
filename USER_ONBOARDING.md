@@ -23,29 +23,49 @@ Please generate the following fields:
 "Thank you for testing the Token Vesting Hub built on Stellar Soroban! Please complete this form to submit your test transaction proof and help us improve the DApp. Your feedback is highly appreciated."
 
 2. Question 1:
-- Title: "Stellar Public Address"
+- Title: "Name"
+- Type: Short Answer
+- Validation: Optional
+
+3. Question 2:
+- Title: "Email"
+- Type: Short Answer
+- Validation: Optional
+
+4. Question 3:
+- Title: "Did you successfully connect your wallet?"
+- Type: Multiple Choice
+- Options: "Yes", "No", "Time Consuming", "Other"
+- Validation: Required
+
+5. Question 4:
+- Title: "Wallet Address"
 - Type: Short Answer
 - Help Text: "Provide your public key (starting with 'G') that you connected to the DApp."
 - Validation: Required (Required text matching pattern: ^G[A-Z0-9]{55}$)
 
-3. Question 2:
-- Title: "Transaction Hash / Proof of Interaction"
+6. Question 5:
+- Title: "Transaction Hash"
 - Type: Short Answer
 - Help Text: "Paste the Stellar transaction hash of your vesting plan creation or claim execution (e.g. from Stellar Expert or Freighter)."
 - Validation: Required (Required, length must be exactly 64 characters)
 
-4. Question 3:
-- Title: "How easy was it to connect your wallet and use the app?"
-- Type: Linear Scale (1 to 5)
-- Label for 1: "Very Difficult"
-- Label for 5: "Very Easy"
+7. Question 6:
+- Title: "Which part of the platform did you like the most?"
+- Type: Paragraph
+- Validation: Optional
+
+8. Question 7:
+- Title: "Which features do you think the platform is missing or could be added?"
+- Type: Paragraph
 - Validation: Required
 
-5. Question 4:
-- Title: "Suggestions for Improvement"
-- Type: Paragraph
-- Help Text: "What features or UX enhancements would you like to see next?"
-- Validation: Optional
+9. Question 8:
+- Title: "Rate overall Platform User Experience (UX)?"
+- Type: Linear Scale (1 to 5)
+- Label for 1: "Very Poor"
+- Label for 5: "Excellent"
+- Validation: Required
 ```
 
 ---
@@ -56,4 +76,4 @@ Once you create the Google Form:
 2. Select the **Link** icon and copy the shortened URL.
 3. Paste the URL below in this file and commit it:
 
-*   **Google Form Live Link**: [Google Form](https://docs.google.com/forms/d/e/1FAIpQLSeB0sAEbsSiKVP0CGs9Un2HCegv1Ab8n42uxbR-b0A10AKSiA/viewform?usp=publish-editor)
+*   **Google Form Live Link**: [Google Form](https://docs.google.com/spreadsheets/d/1pwHqSodUPDT_zJyEcjOPrsNBe_40EG8F0eYSsysb-pU/edit?resourcekey=&gid=574562325#gid=574562325)
