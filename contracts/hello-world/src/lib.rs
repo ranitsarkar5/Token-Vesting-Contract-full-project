@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol};
+use soroban_sdk::{contract, contractimpl, contracttype, token::Client as TokenClient, Address, Env, Symbol};
 
 #[contracttype]
 #[derive(Clone)]
@@ -71,8 +71,8 @@ impl TokenVestingContract {
 
         let plan = VestingPlan {
             id: plan_id,
-            beneficiary,
-            token,
+            beneficiary: beneficiary.clone(),
+            token: token.clone(),
             total_amount,
             released_amount: 0,
             start_time,
@@ -80,7 +80,19 @@ impl TokenVestingContract {
             cliff_duration,
         };
 
+        // Store the plan
         env.storage().instance().set(&DataKey::Plan(plan_id), &plan);
+
+        // Perform token transfer from admin to this contract
+        let token_client = TokenClient::new(&env, &token);
+        token_client.transfer(&admin, &env.current_contract_address(), &total_amount);
+
+        // Publish event
+        env.events().publish(
+            (Symbol::short("vesting"), Symbol::short("created")),
+            (plan_id, beneficiary, total_amount),
+        );
+
         plan_id
     }
 
@@ -112,5 +124,36 @@ impl TokenVestingContract {
         }
 
         plan.total_amount * elapsed as i128 / plan.duration as i128
+    }
+
+    // Release vested tokens to the beneficiary
+    pub fn release(env: Env, plan_id: u64, current_time: u64) -> i128 {
+        let mut plan: VestingPlan = match Self::get_plan(env.clone(), plan_id) {
+            Some(p) => p,
+            None => panic!("plan not found"),
+        };
+
+        let vested = Self::vested_amount(env.clone(), plan_id, current_time);
+        let releasable = vested - plan.released_amount;
+
+        if releasable <= 0 {
+            panic!("no tokens to release");
+        }
+
+        // Update released amount
+        plan.released_amount += releasable;
+        env.storage().instance().set(&DataKey::Plan(plan_id), &plan);
+
+        // Perform token transfer from contract to beneficiary
+        let token_client = TokenClient::new(&env, &plan.token);
+        token_client.transfer(&env.current_contract_address(), &plan.beneficiary, &releasable);
+
+        // Publish event
+        env.events().publish(
+            (Symbol::short("vesting"), Symbol::short("released")),
+            (plan_id, plan.beneficiary, releasable),
+        );
+
+        releasable
     }
 }
