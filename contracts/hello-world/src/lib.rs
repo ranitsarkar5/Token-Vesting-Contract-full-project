@@ -1,4 +1,6 @@
 #![no_std]
+#[cfg(test)]
+mod test;
 use soroban_sdk::{contract, contractimpl, contracttype, token::Client as TokenClient, Address, Env, Symbol};
 
 #[contracttype]
