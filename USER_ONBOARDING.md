@@ -56,4 +56,4 @@ Once you create the Google Form:
 2. Select the **Link** icon and copy the shortened URL.
 3. Paste the URL below in this file and commit it:
 
-*   **Google Form Live Link**: `[PASTE_YOUR_GOOGLE_FORM_URL_HERE]`
+*   **Google Form Live Link**: [Google Form](https://docs.google.com/forms/d/e/1FAIpQLSeB0sAEbsSiKVP0CGs9Un2HCegv1Ab8n42uxbR-b0A10AKSiA/viewform?usp=publish-editor)
