@@ -93,14 +93,40 @@ Traditional vesting systems face several challenges:
 
 ## 🔗 Deployed Smart Contract
 
-**Token Vesting Contract Address:**
-https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CARYWO4GSPJJSC6DJQHR6JYHPTZSJTCOKV63ZDKHH4ENNS7GMWFNUJBE;;
+**Live DApp:** [token-vesting-contract-full-project.vercel.app](https://token-vesting-contract-full-project.vercel.app/)
 
-Example:
-https://stellar.expert/explorer/testnet/tx/f3721f1f0274210527166482d07d3c88eb944917a5f71b299760b8762299bcee
+**Demo Video:** [Watch on Google Drive](https://drive.google.com/file/d/1OQaCOkDINofGVfruAJ0r7yeNbWYJqswW/view?usp=drive_link)
+
+**Token Vesting Contract Address:**
+`CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB`
+[Explore on Stellar Lab](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB;;)
+
+**Example Token Address (XLM-Testnet):**
+`CDLZFC3SYJYDZT7K67VZ75HXZS65IROR64T6QYFJDZAAOKX6PVIYOZDL`
+
+**Example Transaction Hash:**
+[79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9](https://stellar.expert/explorer/testnet/tx/79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9)
+
+### 🔗 Inter-Contract Calls
+This contract implements advanced inter-contract communication via the **Soroban Token Interface**. It interacts with any standard token contract to:
+*   **Pull Tokens**: Securely transfers tokens from the creator to the vesting contract upon plan initialization.
+*   **Release Tokens**: Executes transfers from the contract's own balance to the beneficiary's address upon successful claim.
 
 
 <img width="1892" height="936" alt="Screenshot 2026-03-19 144415" src="https://github.com/user-attachments/assets/5bbb4b8a-961c-4da4-86ed-fda7fb8e60a1" />
+
+
+<img width="1759" height="831" alt="Screenshot 2026-03-20 215748" src="https://github.com/user-attachments/assets/ab0c692e-8011-4bc9-8897-3e4c7bd99bc9" />
+
+<img width="1890" height="838" alt="Screenshot 2026-03-20 215810" src="https://github.com/user-attachments/assets/35089a26-edd5-4646-91ea-1336a7fde3b0" />
+
+## 📱 Mobile Responsive View
+
+<img width="576" height="1280" alt="image" src="https://github.com/user-attachments/assets/8698258a-1e90-4d77-ae4f-4d007a911a21" />
+
+
+<img width="576" height="1280" alt="image" src="https://github.com/user-attachments/assets/a274bc34-1f67-48c3-be0c-2c86ee62735b" />
+
 
 
 
@@ -268,6 +294,26 @@ soroban contract invoke \
   --network testnet \
   -- release --current_time <TIME>
 ```
+
+
+
+## 🧪 Testing
+
+The contract and frontend come with a suite of automated tests to ensure security and reliability.
+
+### Smart Contract Tests
+Run the smart contract tests locally:
+```bash
+cd contracts/hello-world
+cargo test
+```
+![Rust Tests Passing](https://github.com/user-attachments/assets/d96210c8-7a3e-4636-a91b-3e53c669faf6)
+
+### Frontend Tests
+The frontend includes 3 functional tests for UI integrity and wallet integration state.
+![Frontend Tests Passing](assets/test_output.png)
+
+
 
 
 
