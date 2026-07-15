@@ -28,8 +28,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-1.79.0-v2-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build Contract
         run: cargo build --target wasm32-unknown-unknown
