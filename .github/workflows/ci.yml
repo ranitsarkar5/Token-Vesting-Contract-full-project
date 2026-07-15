@@ -17,23 +17,15 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.79.0
+          toolchain: stable
           targets: wasm32-unknown-unknown
 
-      - name: Cache Cargo Dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-1.79.0-v2-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Build Contract
+        working-directory: ./contracts/hello-world
         run: cargo build --target wasm32-unknown-unknown
 
       - name: Run Tests
+        working-directory: ./contracts/hello-world
         run: cargo test
 
   frontend-tests:
