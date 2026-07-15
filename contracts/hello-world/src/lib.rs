@@ -2,7 +2,7 @@
 use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Map, symbol_short};
 
 #[contracttype]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VestingPlan {
     pub beneficiary: Address,
     pub token: Address,
