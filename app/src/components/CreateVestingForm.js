@@ -1,6 +1,77 @@
+/* global BigInt */
 import { useState } from 'react';
-import sorobanService from '../services/sorobanService';
+import * as StellarSdk from '@stellar/stellar-sdk';
+import { signTransaction } from '@stellar/freighter-api';
 import './CreateVestingForm.css';
+
+const CONTRACT_ID = 'CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB';
+const RPC_URL = 'https://soroban-testnet.stellar.org';
+const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
+
+const rpc = new StellarSdk.rpc.Server(RPC_URL);
+
+const sorobanService = {
+  createVestingPlan: async (beneficiary, token, amount, startTime, duration, cliffDuration, walletAddress) => {
+    const account = await rpc.getAccount(walletAddress);
+
+    const tx = new StellarSdk.TransactionBuilder(account, {
+      fee: '1000000',
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(
+        StellarSdk.Operation.invokeContractFunction({
+          contract: CONTRACT_ID,
+          function: 'create_vesting_plan',
+          args: [
+            StellarSdk.nativeToScVal(walletAddress, { type: 'address' }),
+            StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
+            StellarSdk.nativeToScVal(token, { type: 'address' }),
+            StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
+            StellarSdk.nativeToScVal(BigInt(startTime), { type: 'u64' }),
+            StellarSdk.nativeToScVal(BigInt(duration), { type: 'u64' }),
+            StellarSdk.nativeToScVal(BigInt(cliffDuration), { type: 'u64' }),
+          ],
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    const simResult = await rpc.simulateTransaction(tx);
+    if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
+      throw new Error(`Simulation failed: ${simResult.error}`);
+    }
+    const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+    const txXdr = preparedTx.toXDR();
+
+    const signedXdr = await signTransaction(txXdr, {
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
+
+    const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+    const sendResult = await rpc.sendTransaction(signedTx);
+
+    if (sendResult.status === 'ERROR') {
+      throw new Error(`Transaction failed: ${sendResult.errorResult}`);
+    }
+
+    // Poll for result
+    let getResult;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      getResult = await rpc.getTransaction(sendResult.hash);
+      if (getResult.status !== 'NOT_FOUND') break;
+    }
+
+    if (getResult?.status === 'SUCCESS') {
+      return {
+        planId: Number(StellarSdk.scValToNative(getResult.returnValue)),
+        txHash: sendResult.hash
+      };
+    }
+    throw new Error('Transaction did not complete in time');
+  }
+};
+
 
 function CreateVestingForm({ wallet }) {
   const [formData, setFormData] = useState({
@@ -40,7 +111,7 @@ function CreateVestingForm({ wallet }) {
         throw new Error('Cliff period must be shorter than total duration');
       }
 
-      const planId = await sorobanService.createVestingPlan(
+      const result = await sorobanService.createVestingPlan(
         formData.beneficiary,
         formData.tokenAddress,
         parseFloat(formData.amount),
@@ -50,7 +121,7 @@ function CreateVestingForm({ wallet }) {
         wallet
       );
 
-      setSuccess({ message: 'Vesting plan created successfully!', planId });
+      setSuccess({ message: 'Vesting plan created successfully!', planId: result.planId, txHash: result.txHash });
       setFormData({
         beneficiary: '',
         tokenAddress: '',
@@ -177,6 +248,19 @@ function CreateVestingForm({ wallet }) {
             <div className="alert alert-success" id="form-success">
               <p><span>✅</span> {success.message}</p>
               <p className="plan-id-display mono">Plan ID: <strong>#{success.planId}</strong></p>
+              {success.txHash && (
+                <p className="tx-hash-display mono" style={{ marginTop: '8px', fontSize: '0.85em', opacity: 0.9 }}>
+                  Transaction Hash:{' '}
+                  <a
+                    href={`https://stellar.expert/explorer/testnet/tx/${success.txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#818cf8', textDecoration: 'underline', wordBreak: 'break-all' }}
+                  >
+                    {success.txHash.substring(0, 10)}...{success.txHash.substring(success.txHash.length - 10)}
+                  </a>
+                </p>
+              )}
             </div>
           )}
 

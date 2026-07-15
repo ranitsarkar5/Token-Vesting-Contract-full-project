@@ -21,6 +21,45 @@ jest.mock('@stellar/freighter-api', () => ({
   signTransaction: jest.fn(),
 }));
 
+jest.mock('@stellar/stellar-sdk', () => ({
+  rpc: {
+    Server: jest.fn().mockImplementation(() => ({
+      getAccount: jest.fn(),
+      simulateTransaction: jest.fn(),
+      sendTransaction: jest.fn(),
+      getTransaction: jest.fn(),
+    })),
+    Api: {
+      isSimulationError: jest.fn().mockReturnValue(false),
+    },
+    assembleTransaction: jest.fn().mockImplementation(() => ({
+      build: jest.fn().mockImplementation(() => ({
+        toXDR: jest.fn().mockReturnValue('mock-xdr'),
+      })),
+    })),
+  },
+  TransactionBuilder: jest.fn().mockImplementation(() => ({
+    addOperation: jest.fn().mockReturnThis(),
+    setTimeout: jest.fn().mockReturnThis(),
+    build: jest.fn().mockReturnValue({
+      toXDR: jest.fn().mockReturnValue('mock-xdr'),
+    }),
+  })),
+  Operation: {
+    invokeContractFunction: jest.fn(),
+  },
+  nativeToScVal: jest.fn(),
+  scValToNative: jest.fn(),
+  Keypair: {
+    random: jest.fn().mockReturnValue({
+      publicKey: jest.fn().mockReturnValue('mock-public-key'),
+    }),
+  },
+  Account: jest.fn(),
+}));
+
+jest.mock('stellar-sdk', () => jest.requireActual('@stellar/stellar-sdk'));
+
 import { render, screen } from '@testing-library/react';
 import App from './App';
 

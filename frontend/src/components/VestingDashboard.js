@@ -1,6 +1,159 @@
+/* global BigInt */
 import { useState, useEffect, useCallback } from 'react';
-import sorobanService from '../services/sorobanService';
+import * as StellarSdk from '@stellar/stellar-sdk';
+import { signTransaction } from '@stellar/freighter-api';
 import './VestingDashboard.css';
+
+const CONTRACT_ID = 'CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB';
+const RPC_URL = 'https://soroban-testnet.stellar.org';
+const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
+
+const rpc = new StellarSdk.rpc.Server(RPC_URL);
+
+const sorobanService = {
+  getPlanCount: async () => {
+    try {
+      const tempKeypair = StellarSdk.Keypair.random();
+      const dummyAccount = new StellarSdk.Account(tempKeypair.publicKey(), '0');
+      
+      const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
+        fee: '100',
+        networkPassphrase: NETWORK_PASSPHRASE,
+      })
+        .addOperation(
+          StellarSdk.Operation.invokeContractFunction({
+            contract: CONTRACT_ID,
+            function: 'get_plan_count',
+            args: [],
+          })
+        )
+        .setTimeout(30)
+        .build();
+
+      const sim = await rpc.simulateTransaction(tx);
+      if (StellarSdk.rpc.Api.isSimulationError(sim)) return 0;
+      const result = sim.result?.retval;
+      return result ? Number(StellarSdk.scValToNative(result)) : 0;
+    } catch (e) {
+      console.error('getPlanCount error:', e);
+      return 0;
+    }
+  },
+
+  getVestingPlan: async (planId) => {
+    try {
+      const tempKeypair = StellarSdk.Keypair.random();
+      const dummyAccount = new StellarSdk.Account(tempKeypair.publicKey(), '0');
+      
+      const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
+        fee: '100',
+        networkPassphrase: NETWORK_PASSPHRASE,
+      })
+        .addOperation(
+          StellarSdk.Operation.invokeContractFunction({
+            contract: CONTRACT_ID,
+            function: 'get_plan',
+            args: [StellarSdk.nativeToScVal(BigInt(planId), { type: 'u64' })],
+          })
+        )
+        .setTimeout(30)
+        .build();
+
+      const sim = await rpc.simulateTransaction(tx);
+      if (StellarSdk.rpc.Api.isSimulationError(sim)) return null;
+      const result = sim.result?.retval;
+      if (!result) return null;
+
+      const native = StellarSdk.scValToNative(result);
+      return {
+        id: planId,
+        beneficiary: native.beneficiary?.toString() || '',
+        token: native.token?.toString() || '',
+        total_amount: Number(native.total_amount || 0),
+        released_amount: Number(native.released_amount || 0),
+        start_time: Number(native.start_time || 0),
+        duration: Number(native.duration || 0),
+        cliff_duration: Number(native.cliff_duration || 0),
+        created_at: Number(native.created_at || 0),
+      };
+    } catch (e) {
+      console.error(`getVestingPlan(${planId}) error:`, e);
+      return null;
+    }
+  },
+
+  getAllPlans: async function() {
+    const count = await this.getPlanCount();
+    const plans = [];
+    for (let i = 1; i <= count; i++) {
+      const plan = await this.getVestingPlan(i);
+      if (plan) plans.push(plan);
+    }
+    return plans;
+  },
+
+  calculateVestedAmount: (plan) => {
+    if (!plan) return 0;
+    const now = Math.floor(Date.now() / 1000);
+    if (now <= plan.start_time) return 0;
+    if (now < plan.start_time + plan.cliff_duration) return 0;
+    if (now >= plan.start_time + plan.duration) return plan.total_amount;
+    const elapsed = now - plan.start_time;
+    return Math.floor((plan.total_amount * elapsed) / plan.duration);
+  },
+
+  claimVestedTokens: async (planId, walletAddress) => {
+    const account = await rpc.getAccount(walletAddress);
+
+    const tx = new StellarSdk.TransactionBuilder(account, {
+      fee: '1000000',
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(
+        StellarSdk.Operation.invokeContractFunction({
+          contract: CONTRACT_ID,
+          function: 'claim_vested',
+          args: [StellarSdk.nativeToScVal(BigInt(planId), { type: 'u64' })],
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    const simResult = await rpc.simulateTransaction(tx);
+    if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
+      throw new Error(`Simulation failed: ${simResult.error}`);
+    }
+    const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+    const txXdr = preparedTx.toXDR();
+
+    const signedXdr = await signTransaction(txXdr, {
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
+
+    const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+    const sendResult = await rpc.sendTransaction(signedTx);
+
+    if (sendResult.status === 'ERROR') {
+      throw new Error(`Transaction failed: ${sendResult.errorResult}`);
+    }
+
+    let getResult;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      getResult = await rpc.getTransaction(sendResult.hash);
+      if (getResult.status !== 'NOT_FOUND') break;
+    }
+
+    if (getResult?.status === 'SUCCESS') {
+      return {
+        claimed: Number(StellarSdk.scValToNative(getResult.returnValue)),
+        txHash: sendResult.hash
+      };
+    }
+    throw new Error('Transaction did not complete in time');
+  }
+};
+
 
 function VestingDashboard({ wallet }) {
   const [plans, setPlans] = useState([]);
@@ -56,11 +209,28 @@ function VestingDashboard({ wallet }) {
     setSuccessMsg(null);
 
     try {
-      const claimed = await sorobanService.claimVestedTokens(planId, wallet);
-      if (claimed > 0) {
-        setSuccessMsg(`Claimed ${claimed.toFixed(2)} tokens from Plan #${planId}!`);
+      const result = await sorobanService.claimVestedTokens(planId, wallet);
+      if (result.claimed > 0) {
+        setSuccessMsg(
+          <span>
+            Claimed {result.claimed.toFixed(2)} tokens from Plan #{planId}!
+            {result.txHash && (
+              <span style={{ marginLeft: '10px' }}>
+                Transaction:{' '}
+                <a
+                  href={`https://stellar.expert/explorer/testnet/tx/${result.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#818cf8', textDecoration: 'underline' }}
+                >
+                  {result.txHash.substring(0, 8)}...{result.txHash.substring(result.txHash.length - 8)}
+                </a>
+              </span>
+            )}
+          </span>
+        );
         loadPlans();
-        setTimeout(() => setSuccessMsg(null), 5000);
+        setTimeout(() => setSuccessMsg(null), 7000);
       } else {
         setError('No tokens available to claim yet');
       }

@@ -1,5 +1,5 @@
 /* global BigInt */
-import * as StellarSdk from 'stellar-sdk';
+import * as StellarSdk from '@stellar/stellar-sdk';
 import { signTransaction } from '@stellar/freighter-api';
 
 const CONTRACT_ID = 'CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB';
@@ -169,7 +169,10 @@ class SorobanService {
     }
 
     if (getResult?.status === 'SUCCESS') {
-      return Number(StellarSdk.scValToNative(getResult.returnValue));
+      return {
+        planId: Number(StellarSdk.scValToNative(getResult.returnValue)),
+        txHash: sendResult.hash
+      };
     }
     throw new Error('Transaction did not complete in time');
   }
@@ -217,7 +220,10 @@ class SorobanService {
     }
 
     if (getResult?.status === 'SUCCESS') {
-      return Number(StellarSdk.scValToNative(getResult.returnValue));
+      return {
+        claimed: Number(StellarSdk.scValToNative(getResult.returnValue)),
+        txHash: sendResult.hash
+      };
     }
     throw new Error('Transaction did not complete in time');
   }
