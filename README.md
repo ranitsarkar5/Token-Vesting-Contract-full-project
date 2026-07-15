@@ -358,7 +358,7 @@ We surveyed our 10 onboarding testers to evaluate usability, performance, and ov
     *   *Feedback:* "It would be useful to see a chronological history log of all my past claim events with timestamps."
     *   *Action:* Incorporated into the active roadmap for v2.0 development.
     
-*   **Google form link: https://forms.gle/8DEt9zogtKD3md7QA
+*   **Google form link:** https://forms.gle/8DEt9zogtKD3md7QA
 
 *   **Google Form Responses (Live Spreadsheet):** [View Onboarding Feedback Responses](https://docs.google.com/spreadsheets/d/1Dl9i9NE4r8lD5qWnzKeNOAGoNgsOSU1trZNUAHvB180/edit?resourcekey=&gid=1904270890#gid=1904270890)
 
