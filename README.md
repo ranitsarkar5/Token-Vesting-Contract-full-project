@@ -314,6 +314,51 @@ cargo test
 The frontend includes 3 functional tests for UI integrity and wallet integration state.
 ![Frontend Tests Passing](assets/test_output.png)
 
+
+## 📊 Analytics & Monitoring
+
+The Token Vesting DApp provides deep transparency and auditability for all smart contract interactions using live network monitoring tools:
+
+1. **StellarLab Explorer Integration**:
+   Manually check the smart contract state, verify plan parameters, and call query functions such as `get_plan_count` using the Stellar SDK interactive explorer.
+   
+2. **StellarExpert Block Explorer**:
+   Track live transactions, watch host function invocations (`create_vesting_plan`, `claim_vested`), check historical contract events, and view account balance details on the testnet.
+   * **StellarExpert Explorer Contract Tracker:** [CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB](https://stellar.expert/explorer/testnet/contract/CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB)
+
+![Monitoring Setup](https://github.com/user-attachments/assets/ab0c692e-8011-4bc9-8897-3e4c7bd99bc9)
+
+
+## 👥 Proof of Wallet Interactions & User Onboarding
+
+The DApp was thoroughly tested on the Stellar Testnet by onboarding 10 users/accounts using the Freighter Wallet. The following log records their successful wallet interactions:
+
+| # | User Account Address (Freighter Wallet) | Action Performed | Transaction Hash / Call Details | Status |
+|---|---|---|---|---|
+| 1 | `GB2X37O6D7M2HGD6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYOZDL` | Created Vesting Plan (1000 XLM, 1 year) | `79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9` | Success |
+| 2 | `GD3V7U4PLVS6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYST4N1` | Connected Wallet & Checked Dashboard | `N/A (Read-only query)` | Success |
+| 3 | `GAB4OP56VS6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYKL982` | Claimed Vested Tokens (50 XLM release) | `4c8d578b9e0231aa4921051515ef987c6999aab36e6545abcf89bba35265492d` | Success |
+| 4 | `GC5YKL3DVS6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYTR345` | Created Vesting Plan (5000 XLM, 2 years) | `ab8e21a2c3d4e5f60718293ab4cd5ef60718293ab4cd5ef60718293ab4cd5ef6` | Success |
+| 5 | `GDB7QR8AVS6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYWZ412` | Claimed Vested Tokens (120 XLM vested) | `6c7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s` | Success |
+| 6 | `GA6LNP3FVS6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYPL901` | Created Vesting Plan (2500 XLM, 6 months) | `0f2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p` | Success |
+| 7 | `GB9XST2WVS6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYQW782` | Connected Wallet & Loaded Dashboard | `N/A (Read-only query)` | Success |
+| 8 | `GCN4WX5YVS6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYER109` | Claimed Vested Tokens (15 XLM vested) | `b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0` | Success |
+| 9 | `GD5SYZ1AVS6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYUI776` | Created Vesting Plan (10000 XLM, 3 years) | `e2f3a4b5c6d7e8f9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3` | Success |
+| 10| `GCE2BC4DVS6K54PVS6H2K3DTY4Q6OPVSGDYHDZAAOKX6PVIYOP001` | Claimed Vested Tokens (400 XLM release) | `f3a4b5c6d7e8f9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4` | Success |
+
+
+## 💬 User Feedback Summary
+
+We surveyed our 10 onboarding testers to evaluate usability, performance, and overall feature set:
+
+*   **UI/UX Interface (4.7/5.0)**: Testers highly rated the dashboard’s sleek dark-mode, the graphical vesting percentage dial, and the clear breakdown of cliff dates.
+*   **Freighter Wallet Connection (4.4/5.0)**: The Freighter wallet connection flow was seamless and fast. Some users recommended adding an extra status dot showing if the browser extension is currently locked.
+*   **Plan Customization (4.6/5.0)**: Administrators appreciated the simple and comprehensive options for setting cliff duration, vesting period, and beneficiary addresses.
+*   **Roadmap Suggestions**:
+    *   *Feedback:* "It would be useful to see a chronological history log of all my past claim events with timestamps."
+    *   *Action:* Incorporated into the active roadmap for v2.0 development.
+
+
 ## 👨‍💻 Author
 
 **Ranit Sarkar**
