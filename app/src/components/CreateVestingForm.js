@@ -4,7 +4,7 @@ import * as StellarSdk from '@stellar/stellar-sdk';
 import { signTransaction } from '@stellar/freighter-api';
 import './CreateVestingForm.css';
 
-const CONTRACT_ID = 'CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB';
+const CONTRACT_ID = 'CCFGHYOOCC7GBODZCAAA6PU2A4BJ4DTBLS3FOZRXOET4XOO3EKEEQ7TI';
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 const DEFAULT_TOKEN_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
@@ -25,6 +25,7 @@ const sorobanService = {
           contract: CONTRACT_ID,
           function: 'create_vesting_plan',
           args: [
+            StellarSdk.nativeToScVal(walletAddress, { type: 'address' }),
             StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
             StellarSdk.nativeToScVal(tokenAddress, { type: 'address' }),
             StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
