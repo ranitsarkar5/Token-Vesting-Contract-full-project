@@ -197,7 +197,9 @@ class SorobanService {
     try {
       const txXdr = preparedTx.toXDR();
       signedXdrResponse = await signTransaction(txXdr, {
+        network: 'TESTNET',
         networkPassphrase: NETWORK_PASSPHRASE,
+        accountToSign: walletAddress,
       });
     } catch (signErr) {
       throw new Error(`Wallet Signing Cancelled or Failed: ${signErr.message || 'User rejected signature in Freighter'}`);
@@ -222,7 +224,10 @@ class SorobanService {
 
     if (sendResult.status === 'ERROR') {
       let errDetail = 'Contract execution reverted or insufficient account balance.';
-      if (typeof sendResult.errorResult === 'string') {
+      const errStr = JSON.stringify(sendResult.errorResult || {});
+      if (errStr.includes('txBadAuth')) {
+        errDetail = 'Signature Authorization Failed (txBadAuth): Freighter did not sign the Soroban contract authorization entries. Please try signing again or check your active account in Freighter.';
+      } else if (typeof sendResult.errorResult === 'string') {
         errDetail = sendResult.errorResult;
       } else if (sendResult.errorResultXdr) {
         errDetail = `Result XDR: ${sendResult.errorResultXdr}`;
