@@ -130,9 +130,10 @@ class SorobanService {
       );
     }
 
-    // Step 2: Build transaction
+    // Step 2: Build transaction (convert XLM to 7-decimal stroops)
     let tx;
     try {
+      const stroopAmount = BigInt(Math.floor(parseFloat(amount) * 10000000));
       tx = new StellarSdk.TransactionBuilder(account, {
         fee: '1000000',
         networkPassphrase: NETWORK_PASSPHRASE,
@@ -145,7 +146,7 @@ class SorobanService {
               StellarSdk.nativeToScVal(walletAddress, { type: 'address' }),
               StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
               StellarSdk.nativeToScVal(tokenAddress, { type: 'address' }),
-              StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
+              StellarSdk.nativeToScVal(stroopAmount, { type: 'i128' }),
               StellarSdk.nativeToScVal(BigInt(startTime), { type: 'u64' }),
               StellarSdk.nativeToScVal(BigInt(duration), { type: 'u64' }),
               StellarSdk.nativeToScVal(BigInt(cliffDuration), { type: 'u64' }),
@@ -173,7 +174,7 @@ class SorobanService {
         : (rawError?.message || JSON.stringify(rawError || {}));
 
       if (errorMsg.includes('account entry is missing') || errorMsg.includes('Error(Contract, #6)')) {
-        throw new Error('Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.');
+        throw new Error('Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your wallet using Stellar Testnet Friendbot.');
       }
       if (errorMsg.includes('not enough allowance') || errorMsg.includes('underfunded') || errorMsg.includes('balance') || errorMsg.includes('Error(Contract, #9)')) {
         throw new Error('Insufficient XLM Balance: Your wallet does not have enough XLM tokens to lock into this vesting plan.');
@@ -186,6 +187,64 @@ class SorobanService {
     try {
       preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
     } catch (assembleErr) {
+      throw new Error(
+        'Unfunded Testnet Wallet / Fee Error: Your wallet needs active testnet XLM balance to cover transaction fees and storage. Please use Stellar Testnet Friendbot to fund your address.'
+      );
+    }
+
+    // Step 5: Sign
+    let signedXdrResponse;
+    try {
+      const txXdr = preparedTx.toXDR();
+      signedXdrResponse = await signTransaction(txXdr, {
+        networkPassphrase: NETWORK_PASSPHRASE,
+      });
+    } catch (signErr) {
+      throw new Error(`Wallet Signing Cancelled or Failed: ${signErr.message || 'User rejected signature in Freighter'}`);
+    }
+
+    const xdrString = typeof signedXdrResponse === 'string'
+      ? signedXdrResponse
+      : (signedXdrResponse?.signedTxXdr || signedXdrResponse?.xdr || String(signedXdrResponse || ''));
+
+    if (!xdrString || typeof xdrString !== 'string') {
+      throw new Error('Wallet Signing Failed: Invalid signed XDR received from Freighter.');
+    }
+
+    // Step 6: Submit
+    let sendResult;
+    try {
+      const signedTx = StellarSdk.TransactionBuilder.fromXDR(xdrString, NETWORK_PASSPHRASE);
+      sendResult = await this.rpc.sendTransaction(signedTx);
+    } catch (sendErr) {
+      throw new Error(`Transaction Submission Failed: ${sendErr.message || 'Network submission error'}`);
+    }
+
+    if (sendResult.status === 'ERROR') {
+      let errDetail = 'Contract execution reverted or insufficient account balance.';
+      if (typeof sendResult.errorResult === 'string') {
+        errDetail = sendResult.errorResult;
+      } else if (sendResult.errorResultXdr) {
+        errDetail = `Result XDR: ${sendResult.errorResultXdr}`;
+      } else if (sendResult.errorResult) {
+        try {
+          errDetail = JSON.stringify(sendResult.errorResult);
+        } catch (e) {
+          errDetail = String(sendResult.errorResult);
+        }
+      }
+      throw new Error(`Transaction Execution Failed: ${errDetail}`);
+    }
+
+    let getResult;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      getResult = await this.rpc.getTransaction(sendResult.hash);
+      if (getResult.status !== 'NOT_FOUND') break;
+    }
+
+    if (getResult?.status === 'SUCCESS') {
+      return {
         txHash: sendResult.hash
       };
     }

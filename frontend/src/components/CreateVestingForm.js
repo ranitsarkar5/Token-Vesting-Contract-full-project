@@ -25,9 +25,10 @@ const sorobanService = {
       );
     }
 
-    // Step 2: Build contract invocation transaction
+    // Step 2: Build contract invocation transaction (convert XLM to 7-decimal stroops)
     let tx;
     try {
+      const stroopAmount = BigInt(Math.floor(parseFloat(amount) * 10000000));
       tx = new StellarSdk.TransactionBuilder(account, {
         fee: '1000000',
         networkPassphrase: NETWORK_PASSPHRASE,
@@ -40,7 +41,7 @@ const sorobanService = {
               StellarSdk.nativeToScVal(walletAddress, { type: 'address' }),
               StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
               StellarSdk.nativeToScVal(tokenAddress, { type: 'address' }),
-              StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
+              StellarSdk.nativeToScVal(stroopAmount, { type: 'i128' }),
               StellarSdk.nativeToScVal(BigInt(startTime), { type: 'u64' }),
               StellarSdk.nativeToScVal(BigInt(duration), { type: 'u64' }),
               StellarSdk.nativeToScVal(BigInt(cliffDuration), { type: 'u64' }),
@@ -116,7 +117,19 @@ const sorobanService = {
     }
 
     if (sendResult.status === 'ERROR') {
-      throw new Error(`Transaction Execution Failed: ${sendResult.errorResult || 'Contract reverted'}`);
+      let errDetail = 'Contract execution reverted or insufficient account balance.';
+      if (typeof sendResult.errorResult === 'string') {
+        errDetail = sendResult.errorResult;
+      } else if (sendResult.errorResultXdr) {
+        errDetail = `Result XDR: ${sendResult.errorResultXdr}`;
+      } else if (sendResult.errorResult) {
+        try {
+          errDetail = JSON.stringify(sendResult.errorResult);
+        } catch (e) {
+          errDetail = String(sendResult.errorResult);
+        }
+      }
+      throw new Error(`Transaction Execution Failed: ${errDetail}`);
     }
 
     // Step 7: Poll transaction result
