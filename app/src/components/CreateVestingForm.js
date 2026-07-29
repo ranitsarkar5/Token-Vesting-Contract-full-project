@@ -98,7 +98,16 @@ function CreateVestingForm({ wallet }) {
 
     try {
       if (!formData.beneficiary) throw new Error('Beneficiary address is required');
+      if (!formData.beneficiary.startsWith('G') && !formData.beneficiary.startsWith('C')) {
+        throw new Error('Beneficiary address must be a valid Stellar address (starts with G or C)');
+      }
       if (!formData.tokenAddress) throw new Error('Token address is required');
+      if (formData.tokenAddress.trim().startsWith('G')) {
+        throw new Error('Token Address must be a Soroban Contract ID starting with "C". Account addresses starting with "G" are not smart contracts.');
+      }
+      if (!formData.tokenAddress.trim().startsWith('C')) {
+        throw new Error('Token Address must be a valid Soroban Contract ID starting with "C" (e.g. CDLZFC3SYJYDZT7K67VZ75HXZS65IROR64T6QYFJDZAAOKX6PVIYOZDL)');
+      }
       if (!formData.amount || parseFloat(formData.amount) <= 0) throw new Error('Amount must be greater than 0');
       if (!formData.durationDays || parseInt(formData.durationDays) <= 0) throw new Error('Duration must be at least 1 day');
 
@@ -111,8 +120,8 @@ function CreateVestingForm({ wallet }) {
       }
 
       const result = await sorobanService.createVestingPlan(
-        formData.beneficiary,
-        formData.tokenAddress,
+        formData.beneficiary.trim(),
+        formData.tokenAddress.trim(),
         parseFloat(formData.amount),
         now,
         durationSeconds,
@@ -172,13 +181,23 @@ function CreateVestingForm({ wallet }) {
               type="text"
               id="tokenAddress"
               name="tokenAddress"
-              placeholder="C... (Soroban contract address)"
+              placeholder="C... (Soroban contract address starting with C)"
               value={formData.tokenAddress}
               onChange={handleChange}
               className="mono"
               required
             />
-            <small>Soroban token contract to vest</small>
+            <small className="field-hint">
+              Soroban token contract ID (starts with <strong>C...</strong>)
+              <button 
+                type="button" 
+                className="fill-token-btn"
+                style={{ marginLeft: '8px', cursor: 'pointer', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid #6366f1', color: '#6366f1', borderRadius: '4px', padding: '2px 8px', fontSize: '11px' }}
+                onClick={() => setFormData(prev => ({ ...prev, tokenAddress: 'CDLZFC3SYJYDZT7K67VZ75HXZS65IROR64T6QYFJDZAAOKX6PVIYOZDL' }))}
+              >
+                Use Testnet XLM Token
+              </button>
+            </small>
           </div>
 
           <div className="form-group">
