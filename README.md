@@ -105,7 +105,7 @@ Traditional vesting systems face several challenges:
 [Explore on Stellar Lab](https://lab.stellar.org/smart-contracts/contract-explorer?$=network$id=testnet&label=Testnet&horizonUrl=https:////horizon-testnet.stellar.org&rpcUrl=https:////soroban-testnet.stellar.org&passphrase=Test%20SDF%20Network%20/;%20September%202015;&smartContracts$explorer$contractId=CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB;;)
 
 **Example Token Address (XLM-Testnet):**
-`CDLZFC3SYJYDZT7K67VZ75HXZS65IROR64T6QYFJDZAAOKX6PVIYOZDL`
+`CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
 
 **Example Transaction Hash:**
 [79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9](https://stellar.expert/explorer/testnet/tx/79e7ab7ccaa7847a203bb2ea2cde32a59fc962de74df0916e116f1785ad368d9)
