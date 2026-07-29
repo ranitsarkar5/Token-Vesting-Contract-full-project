@@ -144,10 +144,32 @@ class SorobanService {
       .build();
 
     const simResult = await this.rpc.simulateTransaction(tx);
+
     if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
-      throw new Error(`Simulation failed: ${simResult.error}`);
+      const rawError = simResult.error;
+      const errorMsg = typeof rawError === 'string'
+        ? rawError
+        : (rawError?.message || JSON.stringify(rawError || {}));
+
+      if (errorMsg.includes('account entry is missing') || errorMsg.includes('Error(Contract, #6)')) {
+        throw new Error('Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.');
+      }
+      if (errorMsg.includes('not enough allowance') || errorMsg.includes('underfunded') || errorMsg.includes('balance')) {
+        throw new Error('Insufficient XLM Balance: Your wallet does not have enough XLM tokens to lock into this vesting plan.');
+      }
+      throw new Error(`Simulation failed: ${errorMsg}`);
     }
-    const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+
+    let preparedTx;
+    try {
+      preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+    } catch (assembleErr) {
+      const errText = assembleErr?.message || String(assembleErr);
+      if (errText.includes('switch is not a function') || errText.includes('assembleTransaction')) {
+        throw new Error('Unfunded Testnet Wallet: Your connected Freighter wallet has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.');
+      }
+      throw assembleErr;
+    }
     const txXdr = preparedTx.toXDR();
 
     const signedXdr = await signTransaction(txXdr, {

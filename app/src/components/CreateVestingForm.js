@@ -39,10 +39,32 @@ const sorobanService = {
       .build();
 
     const simResult = await rpc.simulateTransaction(tx);
+
     if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
-      throw new Error(`Simulation failed: ${simResult.error}`);
+      const rawError = simResult.error;
+      const errorMsg = typeof rawError === 'string'
+        ? rawError
+        : (rawError?.message || JSON.stringify(rawError || {}));
+
+      if (errorMsg.includes('account entry is missing') || errorMsg.includes('Error(Contract, #6)')) {
+        throw new Error('Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.');
+      }
+      if (errorMsg.includes('not enough allowance') || errorMsg.includes('underfunded') || errorMsg.includes('balance')) {
+        throw new Error('Insufficient XLM Balance: Your wallet does not have enough XLM tokens to lock into this vesting plan.');
+      }
+      throw new Error(`Simulation failed: ${errorMsg}`);
     }
-    const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+
+    let preparedTx;
+    try {
+      preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+    } catch (assembleErr) {
+      const errText = assembleErr?.message || String(assembleErr);
+      if (errText.includes('switch is not a function') || errText.includes('assembleTransaction')) {
+        throw new Error('Unfunded Testnet Wallet: Your connected Freighter wallet has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.');
+      }
+      throw assembleErr;
+    }
     const txXdr = preparedTx.toXDR();
 
     const signedXdr = await signTransaction(txXdr, {
@@ -310,7 +332,31 @@ function CreateVestingForm({ wallet }) {
             <div className="alert alert-error" id="form-error">
               <div className="alert-content">
                 <span className="alert-icon">⚠️</span>
-                <span>{error}</span>
+                <div>
+                  <p style={{ margin: 0 }}>{error}</p>
+                  {(error.includes('Unfunded') || error.includes('Friendbot') || error.includes('Balance')) && (
+                    <a
+                      href="https://laboratory.stellar.org/#account-creator?network=testnet"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="friendbot-link-btn"
+                      style={{
+                        display: 'inline-block',
+                        marginTop: '10px',
+                        padding: '6px 14px',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: 'white',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        fontSize: '0.82rem',
+                        textDecoration: 'none',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                      }}
+                    >
+                      Fund Wallet on Testnet (Friendbot) ↗
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           )}
