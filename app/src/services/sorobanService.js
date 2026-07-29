@@ -118,6 +118,7 @@ class SorobanService {
   // ──────────────────────────────────────────────
 
   async createVestingPlan(beneficiary, token, amount, startTime, duration, cliffDuration, walletAddress) {
+    const tokenAddress = (token && token.trim()) ? token.trim() : 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
     const account = await this.rpc.getAccount(walletAddress);
 
     const tx = new StellarSdk.TransactionBuilder(account, {
@@ -130,7 +131,7 @@ class SorobanService {
           function: 'create_vesting_plan',
           args: [
             StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
-            StellarSdk.nativeToScVal(token, { type: 'address' }),
+            StellarSdk.nativeToScVal(tokenAddress, { type: 'address' }),
             StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
             StellarSdk.nativeToScVal(BigInt(startTime), { type: 'u64' }),
             StellarSdk.nativeToScVal(BigInt(duration), { type: 'u64' }),

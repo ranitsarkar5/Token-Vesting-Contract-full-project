@@ -7,11 +7,13 @@ import './CreateVestingForm.css';
 const CONTRACT_ID = 'CA5JV2CQWQJCLEC32LGOS4OSHM543DM4LPJHEI7NNG6HS3CSD7S2VJJB';
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
+const DEFAULT_TOKEN_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 
 const rpc = new StellarSdk.rpc.Server(RPC_URL);
 
 const sorobanService = {
   createVestingPlan: async (beneficiary, token, amount, startTime, duration, cliffDuration, walletAddress) => {
+    const tokenAddress = (token && token.trim()) ? token.trim() : DEFAULT_TOKEN_ADDRESS;
     const account = await rpc.getAccount(walletAddress);
 
     const tx = new StellarSdk.TransactionBuilder(account, {
@@ -24,7 +26,7 @@ const sorobanService = {
           function: 'create_vesting_plan',
           args: [
             StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
-            StellarSdk.nativeToScVal(token, { type: 'address' }),
+            StellarSdk.nativeToScVal(tokenAddress, { type: 'address' }),
             StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
             StellarSdk.nativeToScVal(BigInt(startTime), { type: 'u64' }),
             StellarSdk.nativeToScVal(BigInt(duration), { type: 'u64' }),
@@ -53,7 +55,6 @@ const sorobanService = {
       throw new Error(`Transaction failed: ${sendResult.errorResult}`);
     }
 
-    // Poll for result
     let getResult;
     for (let i = 0; i < 10; i++) {
       await new Promise(r => setTimeout(r, 2000));
@@ -75,7 +76,6 @@ const sorobanService = {
 function CreateVestingForm({ wallet }) {
   const [formData, setFormData] = useState({
     beneficiary: '',
-    tokenAddress: '',
     amount: '',
     durationDays: '365',
     cliffDays: '0',
@@ -90,6 +90,10 @@ function CreateVestingForm({ wallet }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleDurationPreset = (days) => {
+    setFormData(prev => ({ ...prev, durationDays: days.toString() }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -97,7 +101,12 @@ function CreateVestingForm({ wallet }) {
     setSuccess(null);
 
     try {
-      if (!formData.beneficiary) throw new Error('Beneficiary address is required');
+      if (!wallet) {
+        throw new Error('Please connect your Freighter Wallet first to create a vesting plan.');
+      }
+      if (!formData.beneficiary) {
+        throw new Error('Beneficiary address is required');
+      }
       const cleanBeneficiary = formData.beneficiary.trim();
       try {
         StellarSdk.Address.fromString(cleanBeneficiary);
@@ -105,21 +114,12 @@ function CreateVestingForm({ wallet }) {
         throw new Error(`Invalid Beneficiary Address: ${err.message || 'Must be a valid Stellar address starting with G or C'}`);
       }
 
-      if (!formData.tokenAddress) throw new Error('Token address is required');
-      const cleanToken = formData.tokenAddress.trim();
-      if (cleanToken.startsWith('G')) {
-        throw new Error('Token Address must be a Soroban Contract ID starting with "C". Account addresses starting with "G" are not smart contracts.');
+      if (!formData.amount || parseFloat(formData.amount) <= 0) {
+        throw new Error('Amount must be greater than 0');
       }
-      try {
-        const tokenAddr = StellarSdk.Address.fromString(cleanToken);
-        if (tokenAddr.toScAddress().switch().name !== 'scAddressTypeContract') {
-          throw new Error('Token Address must be a Soroban Contract ID (starts with C)');
-        }
-      } catch (err) {
-        throw new Error(`Invalid Token Address format: ${err.message || 'Must be a valid Soroban contract address starting with C'}`);
+      if (!formData.durationDays || parseInt(formData.durationDays) <= 0) {
+        throw new Error('Duration must be at least 1 day');
       }
-      if (!formData.amount || parseFloat(formData.amount) <= 0) throw new Error('Amount must be greater than 0');
-      if (!formData.durationDays || parseInt(formData.durationDays) <= 0) throw new Error('Duration must be at least 1 day');
 
       const now = Math.floor(Date.now() / 1000);
       const durationSeconds = parseInt(formData.durationDays) * 86400;
@@ -130,8 +130,8 @@ function CreateVestingForm({ wallet }) {
       }
 
       const result = await sorobanService.createVestingPlan(
-        formData.beneficiary.trim(),
-        formData.tokenAddress.trim(),
+        cleanBeneficiary,
+        DEFAULT_TOKEN_ADDRESS,
         parseFloat(formData.amount),
         now,
         durationSeconds,
@@ -142,7 +142,6 @@ function CreateVestingForm({ wallet }) {
       setSuccess({ message: 'Vesting plan created successfully!', planId: result.planId, txHash: result.txHash });
       setFormData({
         beneficiary: '',
-        tokenAddress: '',
         amount: '',
         durationDays: '365',
         cliffDays: '0',
@@ -158,82 +157,113 @@ function CreateVestingForm({ wallet }) {
   return (
     <div className="create-form-container">
       <div className="form-card">
+        {/* Header section with gradient typography */}
         <div className="form-header">
+          <div className="header-badge">
+            <span className="badge-sparkle">✨</span> Soroban Smart Contract
+          </div>
           <h2>Create Vesting Plan</h2>
-          <p className="form-subtitle">Set up a new permissionless vesting schedule on Soroban</p>
+          <p className="form-subtitle">Lock and stream XLM tokens to any beneficiary address with custom schedules</p>
         </div>
 
+        {/* Connected Wallet Status Banner */}
+        {wallet ? (
+          <div className="wallet-status-bar connected">
+            <div className="status-indicator">
+              <span className="pulse-dot"></span>
+              <span className="status-text">Freighter Connected</span>
+            </div>
+            <code className="wallet-address-pill">
+              {wallet.substring(0, 6)}...{wallet.substring(wallet.length - 6)}
+            </code>
+          </div>
+        ) : (
+          <div className="wallet-status-bar disconnected">
+            <span className="status-icon">⚠️</span>
+            <span>Freighter Wallet Not Connected. Please connect wallet at top right.</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} id="create-vesting-form">
+          {/* Automatic Native XLM Token Card */}
+          <div className="token-auto-card">
+            <div className="token-card-left">
+              <div className="token-icon-glow">🪙</div>
+              <div className="token-details">
+                <div className="token-name-row">
+                  <span className="token-title">Testnet XLM</span>
+                  <span className="token-type-tag">Native SAC</span>
+                </div>
+                <small className="token-subtitle">Default Token Contract (Auto Configured)</small>
+              </div>
+            </div>
+            <div className="token-badge-active">
+              <span className="check-icon">✓</span> Ready
+            </div>
+          </div>
+
+          {/* Beneficiary Address Field */}
           <div className="form-group">
             <label htmlFor="beneficiary">
-              <span className="label-icon">👤</span>
+              <span className="label-icon icon-purple">👤</span>
               Beneficiary Address
             </label>
-            <input
-              type="text"
-              id="beneficiary"
-              name="beneficiary"
-              placeholder="G... (Stellar address)"
-              value={formData.beneficiary}
-              onChange={handleChange}
-              className="mono"
-              required
-            />
-            <small>The address that will receive vested tokens</small>
+
+            <div className="input-wrapper">
+              <input
+                type="text"
+                id="beneficiary"
+                name="beneficiary"
+                placeholder="G... (Stellar wallet address to receive tokens)"
+                value={formData.beneficiary}
+                onChange={handleChange}
+                className="mono input-enhanced"
+                required
+              />
+              {wallet && (
+                <button
+                  type="button"
+                  className="quick-self-btn"
+                  onClick={() => setFormData(prev => ({ ...prev, beneficiary: wallet }))}
+                  title="Use connected Freighter wallet address"
+                >
+                  Use My Address
+                </button>
+              )}
+            </div>
+            <small className="field-hint">The Stellar public key (starting with G...) that will receive vested tokens</small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="tokenAddress">
-              <span className="label-icon">🪙</span>
-              Token Contract Address
-            </label>
-            <input
-              type="text"
-              id="tokenAddress"
-              name="tokenAddress"
-              placeholder="C... (Soroban contract address starting with C)"
-              value={formData.tokenAddress}
-              onChange={handleChange}
-              className="mono"
-              required
-            />
-            <small className="field-hint">
-              Soroban token contract ID (starts with <strong>C...</strong>)
-              <button 
-                type="button" 
-                className="fill-token-btn"
-                style={{ marginLeft: '8px', cursor: 'pointer', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid #6366f1', color: '#6366f1', borderRadius: '4px', padding: '2px 8px', fontSize: '11px' }}
-                onClick={() => setFormData(prev => ({ ...prev, tokenAddress: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC' }))}
-              >
-                Use Testnet XLM Token
-              </button>
-            </small>
-          </div>
-
+          {/* Total Amount Field */}
           <div className="form-group">
             <label htmlFor="amount">
-              <span className="label-icon">💰</span>
-              Total Amount
+              <span className="label-icon icon-emerald">💰</span>
+              Total Amount (XLM)
             </label>
-            <input
-              type="number"
-              id="amount"
-              name="amount"
-              placeholder="1000"
-              step="0.01"
-              min="0"
-              value={formData.amount}
-              onChange={handleChange}
-              required
-            />
-            <small>Total number of tokens to vest</small>
+            <div className="input-wrapper">
+              <input
+                type="number"
+                id="amount"
+                name="amount"
+                placeholder="e.g. 1000"
+                step="0.01"
+                min="0"
+                value={formData.amount}
+                onChange={handleChange}
+                className="input-enhanced"
+                required
+              />
+              <span className="currency-suffix">XLM</span>
+            </div>
+            <small className="field-hint">Total amount of XLM tokens to be locked into vesting</small>
           </div>
 
+          {/* Duration & Cliff Row */}
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="durationDays">
-                <span className="label-icon">📅</span>
-                Duration (Days)
+                <span className="label-icon icon-cyan">📅</span>
+                Vesting Duration (Days)
               </label>
               <input
                 type="number"
@@ -243,15 +273,22 @@ function CreateVestingForm({ wallet }) {
                 min="1"
                 value={formData.durationDays}
                 onChange={handleChange}
+                className="input-enhanced"
                 required
               />
-              <small>Total vesting period</small>
+              {/* Quick Presets */}
+              <div className="preset-buttons-row">
+                <button type="button" className={`preset-chip ${formData.durationDays === '30' ? 'active' : ''}`} onClick={() => handleDurationPreset(30)}>30d</button>
+                <button type="button" className={`preset-chip ${formData.durationDays === '90' ? 'active' : ''}`} onClick={() => handleDurationPreset(90)}>90d</button>
+                <button type="button" className={`preset-chip ${formData.durationDays === '180' ? 'active' : ''}`} onClick={() => handleDurationPreset(180)}>180d</button>
+                <button type="button" className={`preset-chip ${formData.durationDays === '365' ? 'active' : ''}`} onClick={() => handleDurationPreset(365)}>1yr</button>
+              </div>
             </div>
 
             <div className="form-group">
               <label htmlFor="cliffDays">
-                <span className="label-icon">🧊</span>
-                Cliff (Days)
+                <span className="label-icon icon-amber">🧊</span>
+                Cliff Period (Days)
               </label>
               <input
                 type="number"
@@ -261,78 +298,106 @@ function CreateVestingForm({ wallet }) {
                 min="0"
                 value={formData.cliffDays}
                 onChange={handleChange}
+                className="input-enhanced"
               />
-              <small>Days before vesting starts</small>
+              <small className="field-hint">Days before token release begins (0 for immediate)</small>
             </div>
           </div>
 
+          {/* Error Alert */}
           {error && (
             <div className="alert alert-error" id="form-error">
-              <span>❌</span> {error}
+              <div className="alert-content">
+                <span className="alert-icon">⚠️</span>
+                <span>{error}</span>
+              </div>
             </div>
           )}
 
+          {/* Success Alert */}
           {success && (
             <div className="alert alert-success" id="form-success">
-              <p><span>✅</span> {success.message}</p>
-              <p className="plan-id-display mono">Plan ID: <strong>#{success.planId}</strong></p>
-              {success.txHash && (
-                <p className="tx-hash-display mono" style={{ marginTop: '8px', fontSize: '0.85em', opacity: 0.9 }}>
-                  Transaction Hash:{' '}
-                  <a
-                    href={`https://stellar.expert/explorer/testnet/tx/${success.txHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: '#818cf8', textDecoration: 'underline', wordBreak: 'break-all' }}
-                  >
-                    {success.txHash.substring(0, 10)}...{success.txHash.substring(success.txHash.length - 10)}
-                  </a>
-                </p>
-              )}
+              <div className="alert-header-row">
+                <span className="alert-icon">🎉</span>
+                <strong>{success.message}</strong>
+              </div>
+              <div className="success-details">
+                <p className="plan-id-display mono">Assigned Plan ID: <strong>#{success.planId}</strong></p>
+                {success.txHash && (
+                  <p className="tx-hash-display mono">
+                    Transaction Explorer:{' '}
+                    <a
+                      href={`https://stellar.expert/explorer/testnet/tx/${success.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {success.txHash.substring(0, 10)}...{success.txHash.substring(success.txHash.length - 10)} ↗
+                    </a>
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
+          {/* Submit Button */}
           <button
             type="submit"
-            className="submit-btn"
-            disabled={loading}
+            className="submit-btn-vibrant"
+            disabled={loading || !wallet}
             id="submit-vesting-btn"
           >
             {loading ? (
               <>
                 <span className="btn-spinner" />
-                Creating Plan...
+                Signing & Submitting to Soroban...
               </>
             ) : (
               <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Create Vesting Plan
+                <span className="btn-glow-layer"></span>
+                <span className="btn-text">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                  Create Vesting Schedule
+                </span>
               </>
             )}
           </button>
         </form>
 
+        {/* How It Works Section */}
         <div className="how-it-works">
-          <h3>How It Works</h3>
+          <h3>
+            <span className="h3-sparkle">💡</span> How Token Vesting Works
+          </h3>
           <div className="steps-grid">
-            <div className="step-item">
-              <span className="step-num">1</span>
-              <span>Tokens vest linearly from start time</span>
+            <div className="step-card card-purple">
+              <div className="step-number">01</div>
+              <div className="step-body">
+                <strong>Lock XLM Tokens</strong>
+                <p>Tokens are transferred safely from your wallet to the Soroban contract.</p>
+              </div>
             </div>
-            <div className="step-item">
-              <span className="step-num">2</span>
-              <span>Optional cliff delays initial vesting</span>
+            <div className="step-card card-cyan">
+              <div className="step-number">02</div>
+              <div className="step-body">
+                <strong>Cliff Protection</strong>
+                <p>If set, tokens remain locked during the cliff period.</p>
+              </div>
             </div>
-            <div className="step-item">
-              <span className="step-num">3</span>
-              <span>Beneficiary claims tokens anytime after cliff</span>
+            <div className="step-card card-emerald">
+              <div className="step-number">03</div>
+              <div className="step-body">
+                <strong>Linear Release</strong>
+                <p>Tokens unlock continuously second-by-second over duration.</p>
+              </div>
             </div>
-            <div className="step-item">
-              <span className="step-num">4</span>
-              <span>Plans are immutable once created</span>
+            <div className="step-card card-amber">
+              <div className="step-number">04</div>
+              <div className="step-body">
+                <strong>Instant Claim</strong>
+                <p>Beneficiary claims unlocked XLM anytime directly from DApp.</p>
+              </div>
             </div>
           </div>
         </div>
