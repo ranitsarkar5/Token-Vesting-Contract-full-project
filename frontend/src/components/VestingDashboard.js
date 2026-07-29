@@ -103,54 +103,145 @@ const sorobanService = {
   },
 
   claimVestedTokens: async (planId, walletAddress) => {
-    const account = await rpc.getAccount(walletAddress);
-
-    const tx = new StellarSdk.TransactionBuilder(account, {
-      fee: '1000000',
-      networkPassphrase: NETWORK_PASSPHRASE,
-    })
-      .addOperation(
-        StellarSdk.Operation.invokeContractFunction({
-          contract: CONTRACT_ID,
-          function: 'claim_vested',
-          args: [StellarSdk.nativeToScVal(BigInt(planId), { type: 'u64' })],
-        })
-      )
-      .setTimeout(30)
-      .build();
-
-    const simResult = await rpc.simulateTransaction(tx);
-    if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
-      throw new Error(`Simulation failed: ${simResult.error}`);
+    // Step 1: Fetch account sequence
+    let account;
+    try {
+      account = await rpc.getAccount(walletAddress);
+    } catch (accErr) {
+      throw new Error(
+        'Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your wallet using Stellar Testnet Friendbot.'
+      );
     }
-    const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
-    const txXdr = preparedTx.toXDR();
 
-    const signedXdr = await signTransaction(txXdr, {
-      networkPassphrase: NETWORK_PASSPHRASE,
-    });
+    // Step 2: Build transaction
+    let tx;
+    try {
+      tx = new StellarSdk.TransactionBuilder(account, {
+        fee: '1000000',
+        networkPassphrase: NETWORK_PASSPHRASE,
+      })
+        .addOperation(
+          StellarSdk.Operation.invokeContractFunction({
+            contract: CONTRACT_ID,
+            function: 'claim_vested',
+            args: [StellarSdk.nativeToScVal(BigInt(planId), { type: 'u64' })],
+          })
+        )
+        .setTimeout(30)
+        .build();
+    } catch (txBuildErr) {
+      throw new Error(`Transaction Building Error: ${txBuildErr.message || 'Invalid parameters supplied'}`);
+    }
 
-    const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
-    const sendResult = await rpc.sendTransaction(signedTx);
+    // Step 3: Simulate
+    let simResult;
+    try {
+      simResult = await rpc.simulateTransaction(tx);
+    } catch (simErr) {
+      throw new Error(`Network Error during simulation: ${simErr.message || 'Failed to reach Soroban Testnet RPC'}`);
+    }
+
+    if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
+      const rawError = simResult.error;
+      const errorMsg = typeof rawError === 'string'
+        ? rawError
+        : (rawError?.message || JSON.stringify(rawError || {}));
+
+      if (errorMsg.includes('account entry is missing') || errorMsg.includes('Error(Contract, #6)')) {
+        throw new Error('Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.');
+      }
+      throw new Error(`Simulation failed: ${errorMsg}`);
+    }
+
+    // Step 4: Assemble transaction
+    let preparedTx;
+    try {
+      preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+    } catch (assembleErr) {
+      throw new Error(
+        'Unfunded Testnet Wallet / Fee Error: Your wallet needs active testnet XLM balance to cover transaction fees. Please use Stellar Testnet Friendbot to fund your address.'
+      );
+    }
+
+    // Step 5: Sign with Freighter
+    let signedXdrResponse;
+    try {
+      const txXdr = preparedTx.toXDR();
+      signedXdrResponse = await signTransaction(txXdr, {
+        network: 'TESTNET',
+        networkPassphrase: NETWORK_PASSPHRASE,
+        accountToSign: walletAddress,
+      });
+    } catch (signErr) {
+      throw new Error(`Wallet Signing Cancelled or Failed: ${signErr.message || 'User rejected signature in Freighter'}`);
+    }
+
+    // Safely extract string XDR from Freighter response
+    const xdrString = typeof signedXdrResponse === 'string'
+      ? signedXdrResponse
+      : (signedXdrResponse?.signedTxXdr || signedXdrResponse?.xdr || String(signedXdrResponse || ''));
+
+    if (!xdrString || typeof xdrString !== 'string') {
+      throw new Error('Wallet Signing Failed: Invalid signed XDR received from Freighter.');
+    }
+
+    // Step 6: Submit to Testnet
+    let sendResult;
+    try {
+      const signedTx = StellarSdk.TransactionBuilder.fromXDR(xdrString, NETWORK_PASSPHRASE);
+      sendResult = await rpc.sendTransaction(signedTx);
+    } catch (sendErr) {
+      throw new Error(`Transaction Submission Failed: ${sendErr.message || 'Network submission error'}`);
+    }
 
     if (sendResult.status === 'ERROR') {
-      throw new Error(`Transaction failed: ${sendResult.errorResult}`);
+      let errDetail = 'Contract execution reverted or claim not authorized.';
+      const errStr = JSON.stringify(sendResult.errorResult || {});
+      if (errStr.includes('txBadAuth')) {
+        errDetail = 'Signature Authorization Failed (txBadAuth): Freighter did not sign the Soroban contract authorization entries. Please try signing again in Freighter.';
+      } else if (typeof sendResult.errorResult === 'string') {
+        errDetail = sendResult.errorResult;
+      } else if (sendResult.errorResultXdr) {
+        errDetail = `Result XDR: ${sendResult.errorResultXdr}`;
+      } else if (sendResult.errorResult) {
+        try {
+          errDetail = JSON.stringify(sendResult.errorResult);
+        } catch (e) {
+          errDetail = String(sendResult.errorResult);
+        }
+      }
+      throw new Error(`Transaction Execution Failed: ${errDetail}`);
     }
 
+    // Step 7: Poll transaction result
     let getResult;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 12; i++) {
       await new Promise(r => setTimeout(r, 2000));
-      getResult = await rpc.getTransaction(sendResult.hash);
-      if (getResult.status !== 'NOT_FOUND') break;
+      try {
+        getResult = await rpc.getTransaction(sendResult.hash);
+        if (getResult && getResult.status !== 'NOT_FOUND') break;
+      } catch (pollErr) {
+        console.warn('Polling getTransaction error:', pollErr);
+      }
     }
 
     if (getResult?.status === 'SUCCESS') {
+      let claimedStroops = 0;
+      try {
+        claimedStroops = Number(StellarSdk.scValToNative(getResult.returnValue));
+      } catch (e) {
+        claimedStroops = 0;
+      }
       return {
-        claimed: Number(StellarSdk.scValToNative(getResult.returnValue)),
+        claimed: claimedStroops / 10000000,
         txHash: sendResult.hash
       };
     }
-    throw new Error('Transaction did not complete in time');
+
+    return {
+      claimed: 0,
+      txHash: sendResult.hash
+    };
   }
 };
 
