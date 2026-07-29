@@ -129,7 +129,6 @@ class SorobanService {
           contract: CONTRACT_ID,
           function: 'create_vesting_plan',
           args: [
-            StellarSdk.nativeToScVal(walletAddress, { type: 'address' }),
             StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
             StellarSdk.nativeToScVal(token, { type: 'address' }),
             StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
