@@ -87,20 +87,29 @@ const sorobanService = {
     }
 
     // Step 5: Sign with Freighter
-    let signedXdr;
+    let signedXdrResponse;
     try {
       const txXdr = preparedTx.toXDR();
-      signedXdr = await signTransaction(txXdr, {
+      signedXdrResponse = await signTransaction(txXdr, {
         networkPassphrase: NETWORK_PASSPHRASE,
       });
     } catch (signErr) {
       throw new Error(`Wallet Signing Cancelled or Failed: ${signErr.message || 'User rejected signature in Freighter'}`);
     }
 
+    // Safely extract string XDR from Freighter response (handles both string & object return formats)
+    const xdrString = typeof signedXdrResponse === 'string'
+      ? signedXdrResponse
+      : (signedXdrResponse?.signedTxXdr || signedXdrResponse?.xdr || String(signedXdrResponse || ''));
+
+    if (!xdrString || typeof xdrString !== 'string') {
+      throw new Error('Wallet Signing Failed: Invalid signed XDR received from Freighter.');
+    }
+
     // Step 6: Submit to Testnet
     let sendResult;
     try {
-      const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+      const signedTx = StellarSdk.TransactionBuilder.fromXDR(xdrString, NETWORK_PASSPHRASE);
       sendResult = await rpc.sendTransaction(signedTx);
     } catch (sendErr) {
       throw new Error(`Transaction Submission Failed: ${sendErr.message || 'Network submission error'}`);

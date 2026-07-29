@@ -214,13 +214,28 @@ class SorobanService {
       throw new Error(`Simulation failed: ${simResult.error}`);
     }
     const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
-    const txXdr = preparedTx.toXDR();
 
-    const signedXdr = await signTransaction(txXdr, {
-      networkPassphrase: NETWORK_PASSPHRASE,
-    });
+    // Step 5: Sign
+    let signedXdrResponse;
+    try {
+      const txXdr = preparedTx.toXDR();
+      signedXdrResponse = await signTransaction(txXdr, {
+        networkPassphrase: NETWORK_PASSPHRASE,
+      });
+    } catch (signErr) {
+      throw new Error(`Wallet Signing Cancelled or Failed: ${signErr.message || 'User rejected signature in Freighter'}`);
+    }
 
-    const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+    const xdrString = typeof signedXdrResponse === 'string'
+      ? signedXdrResponse
+      : (signedXdrResponse?.signedTxXdr || signedXdrResponse?.xdr || String(signedXdrResponse || ''));
+
+    if (!xdrString || typeof xdrString !== 'string') {
+      throw new Error('Wallet Signing Failed: Invalid signed XDR received from Freighter.');
+    }
+
+    // Step 6: Submit
+    const signedTx = StellarSdk.TransactionBuilder.fromXDR(xdrString, NETWORK_PASSPHRASE);
     const sendResult = await this.rpc.sendTransaction(signedTx);
 
     if (sendResult.status === 'ERROR') {
