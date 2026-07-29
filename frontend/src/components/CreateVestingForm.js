@@ -1,7 +1,7 @@
 /* global BigInt */
 import { useState } from 'react';
 import * as StellarSdk from '@stellar/stellar-sdk';
-import { signTransaction } from '@stellar/freighter-api';
+import { signTransaction, getAddress } from '@stellar/freighter-api';
 import './CreateVestingForm.css';
 
 const CONTRACT_ID = 'CCFGHYOOCC7GBODZCAAA6PU2A4BJ4DTBLS3FOZRXOET4XOO3EKEEQ7TI';
@@ -122,7 +122,7 @@ const sorobanService = {
       let errDetail = 'Contract execution reverted or insufficient account balance.';
       const errStr = JSON.stringify(sendResult.errorResult || {});
       if (errStr.includes('txBadAuth')) {
-        errDetail = 'Signature Authorization Failed (txBadAuth): Freighter did not sign the Soroban contract authorization entries. Please try signing again or check your active account in Freighter.';
+        errDetail = `Wallet Account Mismatch (txBadAuth): The transaction was built for wallet address (${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}), but signed by a different account in Freighter. Please open Freighter and select account ${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}.`;
       } else if (typeof sendResult.errorResult === 'string') {
         errDetail = sendResult.errorResult;
       } else if (sendResult.errorResultXdr) {
@@ -225,6 +225,17 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
         throw new Error('Cliff period must be shorter than total duration');
       }
 
+      // Fetch latest active address from Freighter extension to ensure exact account match
+      let activeWallet = wallet;
+      try {
+        const addrRes = await getAddress();
+        if (addrRes?.address) {
+          activeWallet = addrRes.address;
+        }
+      } catch (addrErr) {
+        console.warn('Could not refresh address from Freighter:', addrErr);
+      }
+
       const result = await sorobanService.createVestingPlan(
         cleanBeneficiary,
         DEFAULT_TOKEN_ADDRESS,
@@ -232,7 +243,7 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
         now,
         durationSeconds,
         cliffSeconds,
-        wallet
+        activeWallet
       );
 
       setSuccess({ message: 'Vesting plan created successfully!', planId: result.planId, txHash: result.txHash });

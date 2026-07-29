@@ -1,7 +1,7 @@
 /* global BigInt */
 import { useState, useEffect, useCallback } from 'react';
 import * as StellarSdk from '@stellar/stellar-sdk';
-import { signTransaction } from '@stellar/freighter-api';
+import { signTransaction, getAddress } from '@stellar/freighter-api';
 import './VestingDashboard.css';
 
 const CONTRACT_ID = 'CCFGHYOOCC7GBODZCAAA6PU2A4BJ4DTBLS3FOZRXOET4XOO3EKEEQ7TI';
@@ -300,7 +300,17 @@ function VestingDashboard({ wallet }) {
     setSuccessMsg(null);
 
     try {
-      const result = await sorobanService.claimVestedTokens(planId, wallet);
+      let activeWallet = wallet;
+      try {
+        const addrRes = await getAddress();
+        if (addrRes?.address) {
+          activeWallet = addrRes.address;
+        }
+      } catch (addrErr) {
+        console.warn('Could not refresh address from Freighter:', addrErr);
+      }
+
+      const result = await sorobanService.claimVestedTokens(planId, activeWallet);
       if (result.claimed > 0) {
         setSuccessMsg(
           <span>
