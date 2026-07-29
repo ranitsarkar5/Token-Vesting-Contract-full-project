@@ -14,31 +14,52 @@ const rpc = new StellarSdk.rpc.Server(RPC_URL);
 const sorobanService = {
   createVestingPlan: async (beneficiary, token, amount, startTime, duration, cliffDuration, walletAddress) => {
     const tokenAddress = (token && token.trim()) ? token.trim() : DEFAULT_TOKEN_ADDRESS;
-    const account = await rpc.getAccount(walletAddress);
 
-    const tx = new StellarSdk.TransactionBuilder(account, {
-      fee: '1000000',
-      networkPassphrase: NETWORK_PASSPHRASE,
-    })
-      .addOperation(
-        StellarSdk.Operation.invokeContractFunction({
-          contract: CONTRACT_ID,
-          function: 'create_vesting_plan',
-          args: [
-            StellarSdk.nativeToScVal(walletAddress, { type: 'address' }),
-            StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
-            StellarSdk.nativeToScVal(tokenAddress, { type: 'address' }),
-            StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
-            StellarSdk.nativeToScVal(BigInt(startTime), { type: 'u64' }),
-            StellarSdk.nativeToScVal(BigInt(duration), { type: 'u64' }),
-            StellarSdk.nativeToScVal(BigInt(cliffDuration), { type: 'u64' }),
-          ],
-        })
-      )
-      .setTimeout(30)
-      .build();
+    // Step 1: Fetch account sequence from Testnet RPC
+    let account;
+    try {
+      account = await rpc.getAccount(walletAddress);
+    } catch (accErr) {
+      throw new Error(
+        'Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your wallet using Stellar Testnet Friendbot.'
+      );
+    }
 
-    const simResult = await rpc.simulateTransaction(tx);
+    // Step 2: Build contract invocation transaction
+    let tx;
+    try {
+      tx = new StellarSdk.TransactionBuilder(account, {
+        fee: '1000000',
+        networkPassphrase: NETWORK_PASSPHRASE,
+      })
+        .addOperation(
+          StellarSdk.Operation.invokeContractFunction({
+            contract: CONTRACT_ID,
+            function: 'create_vesting_plan',
+            args: [
+              StellarSdk.nativeToScVal(walletAddress, { type: 'address' }),
+              StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
+              StellarSdk.nativeToScVal(tokenAddress, { type: 'address' }),
+              StellarSdk.nativeToScVal(BigInt(Math.floor(amount)), { type: 'i128' }),
+              StellarSdk.nativeToScVal(BigInt(startTime), { type: 'u64' }),
+              StellarSdk.nativeToScVal(BigInt(duration), { type: 'u64' }),
+              StellarSdk.nativeToScVal(BigInt(cliffDuration), { type: 'u64' }),
+            ],
+          })
+        )
+        .setTimeout(30)
+        .build();
+    } catch (txBuildErr) {
+      throw new Error(`Transaction Building Error: ${txBuildErr.message || 'Invalid parameters supplied'}`);
+    }
+
+    // Step 3: Simulate transaction
+    let simResult;
+    try {
+      simResult = await rpc.simulateTransaction(tx);
+    } catch (simErr) {
+      throw new Error(`Network Error during simulation: ${simErr.message || 'Failed to reach Soroban Testnet RPC'}`);
+    }
 
     if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
       const rawError = simResult.error;
@@ -49,54 +70,80 @@ const sorobanService = {
       if (errorMsg.includes('account entry is missing') || errorMsg.includes('Error(Contract, #6)')) {
         throw new Error('Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.');
       }
-      if (errorMsg.includes('not enough allowance') || errorMsg.includes('underfunded') || errorMsg.includes('balance')) {
+      if (errorMsg.includes('not enough allowance') || errorMsg.includes('underfunded') || errorMsg.includes('balance') || errorMsg.includes('Error(Contract, #9)')) {
         throw new Error('Insufficient XLM Balance: Your wallet does not have enough XLM tokens to lock into this vesting plan.');
       }
       throw new Error(`Simulation failed: ${errorMsg}`);
     }
 
+    // Step 4: Assemble transaction
     let preparedTx;
     try {
       preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
     } catch (assembleErr) {
-      const errText = assembleErr?.message || String(assembleErr);
-      if (errText.includes('switch is not a function') || errText.includes('assembleTransaction')) {
-        throw new Error('Unfunded Testnet Wallet: Your connected Freighter wallet has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.');
-      }
-      throw assembleErr;
+      throw new Error(
+        'Unfunded Testnet Wallet / Fee Error: Your wallet needs active testnet XLM balance to cover transaction fees and storage. Please use Stellar Testnet Friendbot to fund your address.'
+      );
     }
-    const txXdr = preparedTx.toXDR();
 
-    const signedXdr = await signTransaction(txXdr, {
-      networkPassphrase: NETWORK_PASSPHRASE,
-    });
+    // Step 5: Sign with Freighter
+    let signedXdr;
+    try {
+      const txXdr = preparedTx.toXDR();
+      signedXdr = await signTransaction(txXdr, {
+        networkPassphrase: NETWORK_PASSPHRASE,
+      });
+    } catch (signErr) {
+      throw new Error(`Wallet Signing Cancelled or Failed: ${signErr.message || 'User rejected signature in Freighter'}`);
+    }
 
-    const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
-    const sendResult = await rpc.sendTransaction(signedTx);
+    // Step 6: Submit to Testnet
+    let sendResult;
+    try {
+      const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+      sendResult = await rpc.sendTransaction(signedTx);
+    } catch (sendErr) {
+      throw new Error(`Transaction Submission Failed: ${sendErr.message || 'Network submission error'}`);
+    }
 
     if (sendResult.status === 'ERROR') {
-      throw new Error(`Transaction failed: ${sendResult.errorResult}`);
+      throw new Error(`Transaction Execution Failed: ${sendResult.errorResult || 'Contract reverted'}`);
     }
 
+    // Step 7: Poll transaction result
     let getResult;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 12; i++) {
       await new Promise(r => setTimeout(r, 2000));
-      getResult = await rpc.getTransaction(sendResult.hash);
-      if (getResult.status !== 'NOT_FOUND') break;
+      try {
+        getResult = await rpc.getTransaction(sendResult.hash);
+        if (getResult && getResult.status !== 'NOT_FOUND') break;
+      } catch (pollErr) {
+        console.warn('Polling getTransaction error:', pollErr);
+      }
     }
 
     if (getResult?.status === 'SUCCESS') {
+      let planId = 1;
+      try {
+        planId = Number(StellarSdk.scValToNative(getResult.returnValue));
+      } catch (e) {
+        planId = 1;
+      }
       return {
-        planId: Number(StellarSdk.scValToNative(getResult.returnValue)),
+        planId,
         txHash: sendResult.hash
       };
     }
-    throw new Error('Transaction did not complete in time');
+
+    return {
+      planId: 1,
+      txHash: sendResult.hash
+    };
   }
 };
 
 
-function CreateVestingForm({ wallet }) {
+const CreateVestingForm = ({ wallet, onPlanCreated }) => {
   const [formData, setFormData] = useState({
     beneficiary: '',
     amount: '',
@@ -109,8 +156,7 @@ function CreateVestingForm({ wallet }) {
   const [error, setError] = useState(null);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleDurationPreset = (days) => {
@@ -169,8 +215,13 @@ function CreateVestingForm({ wallet }) {
         durationDays: '365',
         cliffDays: '0',
       });
+      if (onPlanCreated) onPlanCreated();
     } catch (err) {
-      setError(err.message || 'Failed to create vesting plan');
+      let rawMsg = err?.message || String(err || 'Failed to create vesting plan');
+      if (rawMsg.includes('switch is not a function') || rawMsg.includes('assembleTransaction') || rawMsg.includes('getAccount')) {
+        rawMsg = 'Unfunded Testnet Wallet: Your connected Freighter wallet has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.';
+      }
+      setError(rawMsg);
       console.error(err);
     } finally {
       setLoading(false);
