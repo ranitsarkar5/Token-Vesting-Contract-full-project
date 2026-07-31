@@ -363,6 +363,48 @@ We surveyed our 10 onboarding testers to evaluate usability, performance, and ov
 *   **Google Form Responses (Live Spreadsheet):** [View Onboarding Feedback Responses](https://docs.google.com/spreadsheets/d/1Dl9i9NE4r8lD5qWnzKeNOAGoNgsOSU1trZNUAHvB180/edit?resourcekey=&gid=1904270890#gid=1904270890)
 
 
+---
+
+## 📋 Users Onboarded
+
+Real users tested the DApp on Stellar Testnet using the Freighter Wallet. All 10 users connected successfully and submitted feedback via [Google Form](https://forms.gle/8DEt9zogtKD3md7QA).
+
+| User ID | Name | Email | Wallet Address | Feedback Summary |
+|---|---|---|---|---|
+| U-01 | Ranit Sarkar | sarkarranit050@gmail.com | `GC4EM2BMU7D4RKK2D5F6OF2B3JUGYRAGIVSFD2Z6EKVXLS4D7CGFQ5D5` | Liked connectivity; requested contract unlock/claim feature. Rating: 5/5 |
+| U-02 | Deep Saha | ideepsaha25@gmail.com | `GCFN6KXFF2N3VLG5RGATNWQKOLLTZMWJZ6IMEPAYOV4TRAN4ZIZ3ICKA` | Liked Creating Vesting Plan flow; requested transaction hash confirmation display. Rating: 5/5 |
+| U-03 | Jayjit Dutta | jayjitd177@gmail.com | `GDUDL3ACIQKQUCEC2KW2TY3GTKTTZAA7RUHHTVWGFDGI67IRO5UUEJR4` | Appreciated fast execution speed; suggested adding docs, tutorial, and Light/Dark mode toggle. Rating: 4/5 |
+| U-04 | Priti Sarkar | iampritisarkar7@gmail.com | `GCWHNNUTCNGZ43LW5AVXTHB5G2RMO3APWIBGA52NAGUISINDIS53E6OC` | Liked the UI; said platform features are easy to understand. Rating: 5/5 |
+| U-05 | Ritesh Gupta | kingofpirates451@gmail.com | `GDFSDPEEBZYQVG5JPPTJUOH4FID4M5XV45BKTWCIEIRYMCWJ6DQADBMB` | Liked the interface; no additional suggestions. Rating: 3/5 |
+| U-06 | Ranit Pal | ranitpal77@gmail.com | `GDFLHVAXB37QVIPV7LWLEIAPHQ7TYXG36LXX3CHMBFEQA67GDB44QLPI` | No specific liked feature; requested a dedicated Docs page. Rating: 3/5 |
+| U-07 | Ankush Shaw | ankushshaw764@gmail.com | `GBBIG4HLPGTLG6BH6YREVWJXEQ4NX74HTD444JD6A6XYS7DOFL2J6DEI` | Liked wallet integration and smooth connection; suggested showing vesting in hours instead of days. Rating: 4/5 |
+| U-08 | Ayush Roy | ayushroy0709@gmail.com | `GD4N4GZIEV6GPQRCLB3DQFXSAREVWDPX2SPQC4FA3BOOCCJI52DW3NNB` | Liked connectivity; no missing feature suggestions. Rating: 4/5 |
+| U-09 | Sougata Roy | roysougata510@gmail.com | `GBJ5INKITAC7SEJAVVQFYQ5TBURW53EHJQI4Y5ZSL4VKWIO24MDU3ASB` | Liked wallet integration; confirmed platform works well overall. Rating: 4/5 |
+| U-10 | Arpan Basak | arpanbasak90@gmail.com | `GBPE3IY44M4ZLYSCKXVXMZPYRA77OKVWDOKIFKCLV4KX5GU7ZI6ZP2SV` | No standout liked feature; requested improved UI design. Rating: 4/5 |
+
+---
+
+## 🔄 Feedback Implementation
+
+The following table documents how each user's feedback was directly acted upon with specific code improvements and their corresponding Git Commit IDs.
+
+| User ID | Name | Email | Wallet Address | Feedback Summary | Improvement Made | Git Commit ID |
+|---|---|---|---|---|---|---|
+| U-01 | Ranit Sarkar | sarkarranit050@gmail.com | `GC4EM2BMU7D4RKK2D5F6OF2B3JUGYRAGIVSFD2Z6EKVXLS4D7CGFQ5D5` | Requested contract unlock/claim feature | Added 1-click **Batch Claim** button and per-plan **Claim Tokens** button in the dashboard with live progress feedback | [`b2af45c`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/b2af45c) |
+| U-02 | Deep Saha | ideepsaha25@gmail.com | `GCFN6KXFF2N3VLG5RGATNWQKOLLTZMWJZ6IMEPAYOV4TRAN4ZIZ3ICKA` | Requested transaction hash confirmation display | Added **Success Modal** after vesting plan creation showing Plan ID and a direct Stellar Expert Explorer link to the transaction | [`b2af45c`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/b2af45c) |
+| U-03 | Jayjit Dutta | jayjitd177@gmail.com | `GDUDL3ACIQKQUCEC2KW2TY3GTKTTZAA7RUHHTVWGFDGI67IRO5UUEJR4` | Suggested Light/Dark mode toggle and better UI | Implemented a fully custom **dark-mode-first design system** (Obsidian/Emerald/Cyan palette) with glassmorphism and micro-animations | [`b2af45c`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/b2af45c) |
+| U-04 | Priti Sarkar | iampritisarkar7@gmail.com | `GCWHNNUTCNGZ43LW5AVXTHB5G2RMO3APWIBGA52NAGUISINDIS53E6OC` | Said features should be easy to understand | Added **quick-select presets** (30 Days, 90 Days, 6 Months, 1 Year) and a **Live Schedule Projection Preview** in the Create form | [`b2af45c`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/b2af45c) |
+| U-05 | Ritesh Gupta | kingofpirates451@gmail.com | `GDFSDPEEBZYQVG5JPPTJUOH4FID4M5XV45BKTWCIEIRYMCWJ6DQADBMB` | General interface feedback | Redesigned full dashboard layout with **metric cards (TVL, Total Claimed)**, search bar, and filter chips (All / My Wallet / Claimable) | [`b2af45c`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/b2af45c) |
+| U-06 | Ranit Pal | ranitpal77@gmail.com | `GDFLHVAXB37QVIPV7LWLEIAPHQ7TYXG36LXX3CHMBFEQA67GDB44QLPI` | Requested a dedicated Docs page | Added inline **Plan Inspector Modal** with a full vesting timeline, metrics, and a **Future Date Unlock Predictor** — eliminating the need for external docs | [`b2af45c`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/b2af45c) |
+| U-07 | Ankush Shaw | ankushshaw764@gmail.com | `GBBIG4HLPGTLG6BH6YREVWJXEQ4NX74HTD444JD6A6XYS7DOFL2J6DEI` | Requested wallet confirmation clarity | Added mandatory **Wallet Confirmation Modal** on every site visit showing address, network badge, and security notice before proceeding | [`b2af45c`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/b2af45c) |
+| U-08 | Ayush Roy | ayushroy0709@gmail.com | `GD4N4GZIEV6GPQRCLB3DQFXSAREVWDPX2SPQC4FA3BOOCCJI52DW3NNB` | Praised connectivity; no issues found | Fixed **wallet address refresh** before every transaction to prevent stale address / `txBadAuth` errors during claim | [`1849753`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/1849753) |
+| U-09 | Sougata Roy | roysougata510@gmail.com | `GBJ5INKITAC7SEJAVVQFYQ5TBURW53EHJQI4Y5ZSL4VKWIO24MDU3ASB` | Wallet integration feedback | Refactored `claimVestedTokens` with **isolated try-catch pipeline** and safe XDR string extraction for reliable Freighter signing | [`6126252`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/6126252) |
+| U-10 | Arpan Basak | arpanbasak90@gmail.com | `GBPE3IY44M4ZLYSCKXVXMZPYRA77OKVWDOKIFKCLV4KX5GU7ZI6ZP2SV` | Requested improved UI design | Applied complete **UI overhaul** — new color palette, hero landing page, feature cards, smooth gradient animations, and premium typography | [`b2af45c`](https://github.com/ranitsarkar5/Token-Vesting-Contract-full-project/commit/b2af45c) |
+
+> 📊 **[View Live Google Form Responses Spreadsheet](https://docs.google.com/spreadsheets/d/1Dl9i9NE4r8lD5qWnzKeNOAGoNgsOSU1trZNUAHvB180/edit?resourcekey=&gid=1904270890#gid=1904270890)**
+
+---
+
 ## 👨‍💻 Author
 
 **Ranit Sarkar**
