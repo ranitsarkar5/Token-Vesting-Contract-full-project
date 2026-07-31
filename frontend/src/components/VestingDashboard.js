@@ -8,6 +8,24 @@ const CONTRACT_ID = 'CCFGHYOOCC7GBODZCAAA6PU2A4BJ4DTBLS3FOZRXOET4XOO3EKEEQ7TI';
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 
+// Smart time formatter: shows hours for <48h, days for longer (User feedback: Ankush Shaw)
+function formatTimeRemaining(secondsLeft) {
+  if (secondsLeft <= 0) return 'Completed';
+  const hours = secondsLeft / 3600;
+  if (hours < 48) {
+    return `${Math.ceil(hours)}h remaining`;
+  }
+  const days = Math.ceil(secondsLeft / 86400);
+  return `${days}d remaining`;
+}
+
+// Format vesting duration in most readable unit
+function formatDuration(seconds) {
+  const hours = seconds / 3600;
+  if (hours < 48) return `${Math.round(hours)} hours`;
+  return `${Math.round(seconds / 86400)} days`;
+}
+
 const rpc = new StellarSdk.rpc.Server(RPC_URL);
 
 const sorobanService = {
@@ -204,6 +222,10 @@ function VestingDashboard({ wallet, onNavigateCreate }) {
         const inCliff = now < plan.start_time + plan.cliff_duration;
         const isCompleted = vested >= plan.total_amount;
 
+        const now2 = Math.floor(Date.now() / 1000);
+        const endTime = plan.start_time + plan.duration;
+        const secondsLeft = Math.max(0, endTime - now2);
+
         return {
           ...plan,
           vested,
@@ -211,6 +233,7 @@ function VestingDashboard({ wallet, onNavigateCreate }) {
           progress,
           inCliff,
           isCompleted,
+          secondsLeft,
         };
       });
       setPlans(enriched);
@@ -521,6 +544,10 @@ function VestingDashboard({ wallet, onNavigateCreate }) {
                     <span className="mini-label">Available</span>
                     <span className="mini-value text-cyan">{plan.releasable.toFixed(1)} XLM</span>
                   </div>
+                  <div className="mini-stat">
+                    <span className="mini-label">Time Left</span>
+                    <span className="mini-value">{formatTimeRemaining(plan.secondsLeft)}</span>
+                  </div>
                 </div>
               </div>
 
@@ -587,7 +614,11 @@ function VestingDashboard({ wallet, onNavigateCreate }) {
                 </div>
                 <div className="ins-stat-box">
                   <span className="ins-label">Vesting Duration</span>
-                  <strong className="ins-val">{Math.round(selectedPlan.duration / 86400)} Days</strong>
+                  <strong className="ins-val">{formatDuration(selectedPlan.duration)}</strong>
+                </div>
+                <div className="ins-stat-box">
+                  <span className="ins-label">Time Remaining</span>
+                  <strong className="ins-val">{formatTimeRemaining(selectedPlan.secondsLeft)}</strong>
                 </div>
               </div>
 
