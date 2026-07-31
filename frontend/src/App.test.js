@@ -38,13 +38,6 @@ jest.mock('@stellar/stellar-sdk', () => ({
       })),
     })),
   },
-  TransactionBuilder: jest.fn().mockImplementation(() => ({
-    addOperation: jest.fn().mockReturnThis(),
-    setTimeout: jest.fn().mockReturnThis(),
-    build: jest.fn().mockReturnValue({
-      toXDR: jest.fn().mockReturnValue('mock-xdr'),
-    }),
-  })),
   Operation: {
     invokeContractFunction: jest.fn(),
   },
@@ -56,6 +49,23 @@ jest.mock('@stellar/stellar-sdk', () => ({
     }),
   },
   Account: jest.fn(),
+  Address: {
+    fromString: jest.fn().mockReturnValue({}),
+  },
+  TransactionBuilder: Object.assign(
+    jest.fn().mockImplementation(() => ({
+      addOperation: jest.fn().mockReturnThis(),
+      setTimeout: jest.fn().mockReturnThis(),
+      build: jest.fn().mockReturnValue({
+        toXDR: jest.fn().mockReturnValue('mock-xdr'),
+      }),
+    })),
+    {
+      fromXDR: jest.fn().mockReturnValue({
+        toXDR: jest.fn().mockReturnValue('mock-xdr'),
+      }),
+    }
+  ),
 }));
 
 jest.mock('stellar-sdk', () => jest.requireActual('@stellar/stellar-sdk'));
@@ -70,10 +80,10 @@ test('renders the app with brand name', () => {
 
 test('renders connect wallet hint on hero page', () => {
   render(<App />);
-  expect(screen.getByText(/Connect your Freighter wallet to get started/i)).toBeInTheDocument();
+  expect(screen.getByText(/Connect your Freighter wallet above to get started/i)).toBeInTheDocument();
 });
 
-test('renders hero section with built on Stellar Soroban badge', () => {
+test('renders hero section with Stellar badge', () => {
   render(<App />);
-  expect(screen.getByText(/Built on Stellar Soroban/i)).toBeInTheDocument();
+  expect(screen.getByText(/Permissionless Smart Contracts on Stellar/i)).toBeInTheDocument();
 });
