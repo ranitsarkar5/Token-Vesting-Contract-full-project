@@ -1,5 +1,5 @@
 /* global BigInt */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { signTransaction, getAddress } from '@stellar/freighter-api';
 import './CreateVestingForm.css';
@@ -11,166 +11,7 @@ const DEFAULT_TOKEN_ADDRESS = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2
 
 const rpc = new StellarSdk.rpc.Server(RPC_URL);
 
-const sorobanService = {
-  createVestingPlan: async (beneficiary, token, amount, startTime, duration, cliffDuration, walletAddress) => {
-    const tokenAddress = (token && token.trim()) ? token.trim() : DEFAULT_TOKEN_ADDRESS;
-
-    // Step 1: Fetch account sequence from Testnet RPC
-    let account;
-    try {
-      account = await rpc.getAccount(walletAddress);
-    } catch (accErr) {
-      throw new Error(
-        'Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your wallet using Stellar Testnet Friendbot.'
-      );
-    }
-
-    // Step 2: Build contract invocation transaction (convert XLM to 7-decimal stroops)
-    let tx;
-    try {
-      const stroopAmount = BigInt(Math.floor(parseFloat(amount) * 10000000));
-      tx = new StellarSdk.TransactionBuilder(account, {
-        fee: '1000000',
-        networkPassphrase: NETWORK_PASSPHRASE,
-      })
-        .addOperation(
-          StellarSdk.Operation.invokeContractFunction({
-            contract: CONTRACT_ID,
-            function: 'create_vesting_plan',
-            args: [
-              StellarSdk.nativeToScVal(walletAddress, { type: 'address' }),
-              StellarSdk.nativeToScVal(beneficiary, { type: 'address' }),
-              StellarSdk.nativeToScVal(tokenAddress, { type: 'address' }),
-              StellarSdk.nativeToScVal(stroopAmount, { type: 'i128' }),
-              StellarSdk.nativeToScVal(BigInt(startTime), { type: 'u64' }),
-              StellarSdk.nativeToScVal(BigInt(duration), { type: 'u64' }),
-              StellarSdk.nativeToScVal(BigInt(cliffDuration), { type: 'u64' }),
-            ],
-          })
-        )
-        .setTimeout(30)
-        .build();
-    } catch (txBuildErr) {
-      throw new Error(`Transaction Building Error: ${txBuildErr.message || 'Invalid parameters supplied'}`);
-    }
-
-    // Step 3: Simulate transaction
-    let simResult;
-    try {
-      simResult = await rpc.simulateTransaction(tx);
-    } catch (simErr) {
-      throw new Error(`Network Error during simulation: ${simErr.message || 'Failed to reach Soroban Testnet RPC'}`);
-    }
-
-    if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
-      const rawError = simResult.error;
-      const errorMsg = typeof rawError === 'string'
-        ? rawError
-        : (rawError?.message || JSON.stringify(rawError || {}));
-
-      if (errorMsg.includes('account entry is missing') || errorMsg.includes('Error(Contract, #6)')) {
-        throw new Error('Unfunded Testnet Wallet: Your connected Freighter account has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.');
-      }
-      if (errorMsg.includes('not enough allowance') || errorMsg.includes('underfunded') || errorMsg.includes('balance') || errorMsg.includes('Error(Contract, #9)')) {
-        throw new Error('Insufficient XLM Balance: Your wallet does not have enough XLM tokens to lock into this vesting plan.');
-      }
-      throw new Error(`Simulation failed: ${errorMsg}`);
-    }
-
-    // Step 4: Assemble transaction
-    let preparedTx;
-    try {
-      preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
-    } catch (assembleErr) {
-      throw new Error(
-        'Unfunded Testnet Wallet / Fee Error: Your wallet needs active testnet XLM balance to cover transaction fees and storage. Please use Stellar Testnet Friendbot to fund your address.'
-      );
-    }
-
-    // Step 5: Sign with Freighter (pass network and accountToSign to sign Soroban auth entries)
-    let signedXdrResponse;
-    try {
-      const txXdr = preparedTx.toXDR();
-      signedXdrResponse = await signTransaction(txXdr, {
-        network: 'TESTNET',
-        networkPassphrase: NETWORK_PASSPHRASE,
-        accountToSign: walletAddress,
-      });
-    } catch (signErr) {
-      throw new Error(`Wallet Signing Cancelled or Failed: ${signErr.message || 'User rejected signature in Freighter'}`);
-    }
-
-    // Safely extract string XDR from Freighter response (handles both string & object return formats)
-    const xdrString = typeof signedXdrResponse === 'string'
-      ? signedXdrResponse
-      : (signedXdrResponse?.signedTxXdr || signedXdrResponse?.xdr || String(signedXdrResponse || ''));
-
-    if (!xdrString || typeof xdrString !== 'string') {
-      throw new Error('Wallet Signing Failed: Invalid signed XDR received from Freighter.');
-    }
-
-    // Step 6: Submit to Testnet
-    let sendResult;
-    try {
-      const signedTx = StellarSdk.TransactionBuilder.fromXDR(xdrString, NETWORK_PASSPHRASE);
-      sendResult = await rpc.sendTransaction(signedTx);
-    } catch (sendErr) {
-      throw new Error(`Transaction Submission Failed: ${sendErr.message || 'Network submission error'}`);
-    }
-
-    if (sendResult.status === 'ERROR') {
-      let errDetail = 'Contract execution reverted or insufficient account balance.';
-      const errStr = JSON.stringify(sendResult.errorResult || {});
-      if (errStr.includes('txBadAuth')) {
-        errDetail = `Wallet Account Mismatch (txBadAuth): The transaction was built for wallet address (${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}), but signed by a different account in Freighter. Please open Freighter and select account ${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}.`;
-      } else if (typeof sendResult.errorResult === 'string') {
-        errDetail = sendResult.errorResult;
-      } else if (sendResult.errorResultXdr) {
-        errDetail = `Result XDR: ${sendResult.errorResultXdr}`;
-      } else if (sendResult.errorResult) {
-        try {
-          errDetail = JSON.stringify(sendResult.errorResult);
-        } catch (e) {
-          errDetail = String(sendResult.errorResult);
-        }
-      }
-      throw new Error(`Transaction Execution Failed: ${errDetail}`);
-    }
-
-    // Step 7: Poll transaction result
-    let getResult;
-    for (let i = 0; i < 12; i++) {
-      await new Promise(r => setTimeout(r, 2000));
-      try {
-        getResult = await rpc.getTransaction(sendResult.hash);
-        if (getResult && getResult.status !== 'NOT_FOUND') break;
-      } catch (pollErr) {
-        console.warn('Polling getTransaction error:', pollErr);
-      }
-    }
-
-    if (getResult?.status === 'SUCCESS') {
-      let planId = 1;
-      try {
-        planId = Number(StellarSdk.scValToNative(getResult.returnValue));
-      } catch (e) {
-        planId = 1;
-      }
-      return {
-        planId,
-        txHash: sendResult.hash
-      };
-    }
-
-    return {
-      planId: 1,
-      txHash: sendResult.hash
-    };
-  }
-};
-
-
-const CreateVestingForm = ({ wallet, onPlanCreated }) => {
+const CreateVestingForm = ({ wallet, onPlanCreated, onNavigateDashboard }) => {
   const [formData, setFormData] = useState({
     beneficiary: '',
     amount: '',
@@ -178,9 +19,29 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
     cliffDays: '0',
   });
 
+  const [currentStep, setCurrentStep] = useState(0); // 0 = idle, 1-4 = progress steps
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(null);
+  const [successData, setSuccessData] = useState(null);
   const [error, setError] = useState(null);
+
+  // Live schedule calculations
+  const scheduleProjection = useMemo(() => {
+    const amountNum = parseFloat(formData.amount) || 0;
+    const durationNum = parseInt(formData.durationDays) || 1;
+    const cliffNum = parseInt(formData.cliffDays) || 0;
+
+    const now = Math.floor(Date.now() / 1000);
+    const cliffEnd = now + cliffNum * 86400;
+    const end = now + durationNum * 86400;
+    const dailyRate = durationNum > 0 ? (amountNum / durationNum).toFixed(4) : '0';
+
+    return {
+      startTimeStr: new Date(now * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }),
+      cliffEndStr: cliffNum > 0 ? new Date(cliffEnd * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'No Cliff Period',
+      endTimeStr: new Date(end * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }),
+      dailyRate,
+    };
+  }, [formData]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -190,11 +51,16 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
     setFormData(prev => ({ ...prev, durationDays: days.toString() }));
   };
 
+  const handleCliffPreset = (days) => {
+    setFormData(prev => ({ ...prev, cliffDays: days.toString() }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(null);
+    setSuccessData(null);
+    setCurrentStep(1); // Step 1: Input & Balance Check
 
     try {
       if (!wallet) {
@@ -207,25 +73,23 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
       try {
         StellarSdk.Address.fromString(cleanBeneficiary);
       } catch (err) {
-        throw new Error(`Invalid Beneficiary Address: ${err.message || 'Must be a valid Stellar address starting with G or C'}`);
+        throw new Error(`Invalid Beneficiary Address: ${err.message || 'Must be a valid Stellar G... or C... address'}`);
       }
 
       if (!formData.amount || parseFloat(formData.amount) <= 0) {
-        throw new Error('Amount must be greater than 0');
+        throw new Error('Amount must be greater than 0 XLM');
       }
       if (!formData.durationDays || parseInt(formData.durationDays) <= 0) {
-        throw new Error('Duration must be at least 1 day');
+        throw new Error('Vesting duration must be at least 1 day');
       }
 
-      const now = Math.floor(Date.now() / 1000);
       const durationSeconds = parseInt(formData.durationDays) * 86400;
       const cliffSeconds = parseInt(formData.cliffDays || '0') * 86400;
 
       if (cliffSeconds >= durationSeconds) {
-        throw new Error('Cliff period must be shorter than total duration');
+        throw new Error('Cliff period must be strictly shorter than total duration');
       }
 
-      // Fetch latest active address from Freighter extension to ensure exact account match
       let activeWallet = wallet;
       try {
         const addrRes = await getAddress();
@@ -233,100 +97,188 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
           activeWallet = addrRes.address;
         }
       } catch (addrErr) {
-        console.warn('Could not refresh address from Freighter:', addrErr);
+        console.warn('Freighter address refresh note:', addrErr);
       }
 
-      const result = await sorobanService.createVestingPlan(
-        cleanBeneficiary,
-        DEFAULT_TOKEN_ADDRESS,
-        parseFloat(formData.amount),
-        now,
-        durationSeconds,
-        cliffSeconds,
-        activeWallet
-      );
+      // Step 2: Fetch account and simulate Soroban transaction
+      setCurrentStep(2);
+      let account;
+      try {
+        account = await rpc.getAccount(activeWallet);
+      } catch (accErr) {
+        throw new Error('Unfunded Testnet Account: Your connected address has no XLM balance on Testnet. Click the button below to fund with Friendbot.');
+      }
 
-      setSuccess({ message: 'Vesting plan created successfully!', planId: result.planId, txHash: result.txHash });
+      const stroopAmount = BigInt(Math.floor(parseFloat(formData.amount) * 10000000));
+      const nowSeconds = Math.floor(Date.now() / 1000);
+
+      const tx = new StellarSdk.TransactionBuilder(account, {
+        fee: '1000000',
+        networkPassphrase: NETWORK_PASSPHRASE,
+      })
+        .addOperation(
+          StellarSdk.Operation.invokeContractFunction({
+            contract: CONTRACT_ID,
+            function: 'create_vesting_plan',
+            args: [
+              StellarSdk.nativeToScVal(activeWallet, { type: 'address' }),
+              StellarSdk.nativeToScVal(cleanBeneficiary, { type: 'address' }),
+              StellarSdk.nativeToScVal(DEFAULT_TOKEN_ADDRESS, { type: 'address' }),
+              StellarSdk.nativeToScVal(stroopAmount, { type: 'i128' }),
+              StellarSdk.nativeToScVal(BigInt(nowSeconds), { type: 'u64' }),
+              StellarSdk.nativeToScVal(BigInt(durationSeconds), { type: 'u64' }),
+              StellarSdk.nativeToScVal(BigInt(cliffSeconds), { type: 'u64' }),
+            ],
+          })
+        )
+        .setTimeout(30)
+        .build();
+
+      const simResult = await rpc.simulateTransaction(tx);
+      if (StellarSdk.rpc.Api.isSimulationError(simResult)) {
+        const rawErr = simResult.error;
+        const errStr = typeof rawErr === 'string' ? rawErr : (rawErr?.message || JSON.stringify(rawErr || {}));
+        if (errStr.includes('account entry is missing')) {
+          throw new Error('Unfunded Testnet Wallet: Your address requires testnet XLM. Please use Testnet Friendbot.');
+        }
+        throw new Error(`Soroban simulation failed: ${errStr}`);
+      }
+
+      const preparedTx = StellarSdk.rpc.assembleTransaction(tx, simResult).build();
+
+      // Step 3: Wallet Signing Prompt
+      setCurrentStep(3);
+      const txXdr = preparedTx.toXDR();
+      const signedXdrResponse = await signTransaction(txXdr, {
+        network: 'TESTNET',
+        networkPassphrase: NETWORK_PASSPHRASE,
+        accountToSign: activeWallet,
+      });
+
+      const xdrString = typeof signedXdrResponse === 'string'
+        ? signedXdrResponse
+        : (signedXdrResponse?.signedTxXdr || signedXdrResponse?.xdr || String(signedXdrResponse || ''));
+
+      if (!xdrString) {
+        throw new Error('Wallet signature failed or was rejected.');
+      }
+
+      // Step 4: Submission & Ledger Settlement
+      setCurrentStep(4);
+      const signedTx = StellarSdk.TransactionBuilder.fromXDR(xdrString, NETWORK_PASSPHRASE);
+      const sendResult = await rpc.sendTransaction(signedTx);
+
+      if (sendResult.status === 'ERROR') {
+        throw new Error(`Transaction execution error: ${JSON.stringify(sendResult.errorResult || {})}`);
+      }
+
+      // Quick poll for ledger inclusion (optimistic 2s delay)
+      let getResult;
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 1500));
+        try {
+          getResult = await rpc.getTransaction(sendResult.hash);
+          if (getResult && getResult.status !== 'NOT_FOUND') break;
+        } catch (pollErr) {
+          console.warn('Polling status:', pollErr);
+        }
+      }
+
+      let assignedPlanId = 1;
+      if (getResult?.returnValue) {
+        try {
+          assignedPlanId = Number(StellarSdk.scValToNative(getResult.returnValue));
+        } catch (e) {
+          assignedPlanId = 1;
+        }
+      }
+
+      // Success modal state!
+      setSuccessData({
+        planId: assignedPlanId,
+        txHash: sendResult.hash,
+        beneficiary: cleanBeneficiary,
+        amount: formData.amount,
+        durationDays: formData.durationDays,
+        cliffDays: formData.cliffDays,
+      });
+
       setFormData({
         beneficiary: '',
         amount: '',
         durationDays: '365',
         cliffDays: '0',
       });
+
       if (onPlanCreated) onPlanCreated();
     } catch (err) {
-      let rawMsg = err?.message || String(err || 'Failed to create vesting plan');
-      if (rawMsg.includes('switch is not a function') || rawMsg.includes('assembleTransaction') || rawMsg.includes('getAccount')) {
-        rawMsg = 'Unfunded Testnet Wallet: Your connected Freighter wallet has no XLM balance on Testnet. Please fund your address using Stellar Testnet Friendbot.';
-      }
-      setError(rawMsg);
-      console.error(err);
+      setError(err?.message || String(err));
     } finally {
       setLoading(false);
+      setCurrentStep(0);
     }
   };
 
   return (
     <div className="create-form-container">
-      <div className="form-card">
-        {/* Header section with gradient typography */}
+      <div className="form-card main-form-card">
+        {/* Form Header */}
         <div className="form-header">
-          <div className="header-badge">
-            <span className="badge-sparkle">✨</span> Soroban Smart Contract
+          <div className="header-badge-handcrafted">
+            <span className="badge-dot-live" /> Stellar Soroban Contract
           </div>
-          <h2>Create Vesting Plan</h2>
-          <p className="form-subtitle">Lock and stream XLM tokens to any beneficiary address with custom schedules</p>
+          <h2>Create Token Vesting Schedule</h2>
+          <p className="form-subtitle">
+            Safely lock and stream XLM tokens to any beneficiary with custom cliff and linear release schedules.
+          </p>
         </div>
 
-        {/* Connected Wallet Status Banner */}
+        {/* Connected Wallet Bar */}
         {wallet ? (
           <div className="wallet-status-bar connected">
             <div className="status-indicator">
-              <span className="pulse-dot"></span>
-              <span className="status-text">Freighter Connected</span>
+              <span className="pulse-dot" />
+              <span>Active Creator Address</span>
             </div>
-            <code className="wallet-address-pill">
+            <code className="wallet-address-pill mono">
               {wallet.substring(0, 6)}...{wallet.substring(wallet.length - 6)}
             </code>
           </div>
         ) : (
           <div className="wallet-status-bar disconnected">
             <span className="status-icon">⚠️</span>
-            <span>Freighter Wallet Not Connected. Please connect wallet at top right.</span>
+            <span>Freighter Wallet not connected. Please connect wallet at top right.</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} id="create-vesting-form">
-          {/* Automatic Native XLM Token Card */}
-          <div className="token-auto-card">
+          {/* Token Card */}
+          <div className="token-select-card">
             <div className="token-card-left">
-              <div className="token-icon-glow">🪙</div>
-              <div className="token-details">
-                <div className="token-name-row">
-                  <span className="token-title">Testnet XLM</span>
-                  <span className="token-type-tag">Native SAC</span>
+              <div className="token-avatar">🪙</div>
+              <div>
+                <div className="token-title-row">
+                  <strong>Stellar XLM (Native SAC)</strong>
+                  <span className="chip-tag">Soroban SAC</span>
                 </div>
-                <small className="token-subtitle">Default Token Contract (Auto Configured)</small>
+                <small className="token-desc">Official Testnet Soroban Token Contract</small>
               </div>
             </div>
-            <div className="token-badge-active">
-              <span className="check-icon">✓</span> Ready
-            </div>
+            <div className="token-badge-verified">✓ Active Contract</div>
           </div>
 
-          {/* Beneficiary Address Field */}
+          {/* Beneficiary Input */}
           <div className="form-group">
             <label htmlFor="beneficiary">
-              <span className="label-icon icon-purple">👤</span>
-              Beneficiary Address
+              <span className="label-icon">👤</span>
+              Beneficiary Stellar Address
             </label>
-
             <div className="input-wrapper">
               <input
                 type="text"
                 id="beneficiary"
                 name="beneficiary"
-                placeholder="G... (Stellar wallet address to receive tokens)"
+                placeholder="G... (Stellar public key to receive tokens)"
                 value={formData.beneficiary}
                 onChange={handleChange}
                 className="mono input-enhanced"
@@ -337,29 +289,28 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
                   type="button"
                   className="quick-self-btn"
                   onClick={() => setFormData(prev => ({ ...prev, beneficiary: wallet }))}
-                  title="Use connected Freighter wallet address"
                 >
                   Use My Address
                 </button>
               )}
             </div>
-            <small className="field-hint">The Stellar public key (starting with G...) that will receive vested tokens</small>
+            <small className="field-hint">The beneficiary can claim unlocked tokens anytime from the dashboard.</small>
           </div>
 
-          {/* Total Amount Field */}
+          {/* Amount Input */}
           <div className="form-group">
             <label htmlFor="amount">
-              <span className="label-icon icon-emerald">💰</span>
-              Total Amount (XLM)
+              <span className="label-icon">💰</span>
+              Total Amount to Lock (XLM)
             </label>
             <div className="input-wrapper">
               <input
                 type="number"
                 id="amount"
                 name="amount"
-                placeholder="e.g. 1000"
+                placeholder="e.g. 500"
                 step="0.01"
-                min="0"
+                min="0.1"
                 value={formData.amount}
                 onChange={handleChange}
                 className="input-enhanced"
@@ -367,15 +318,14 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
               />
               <span className="currency-suffix">XLM</span>
             </div>
-            <small className="field-hint">Total amount of XLM tokens to be locked into vesting</small>
           </div>
 
-          {/* Duration & Cliff Row */}
+          {/* Duration & Cliff Fields */}
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="durationDays">
-                <span className="label-icon icon-cyan">📅</span>
-                Vesting Duration (Days)
+                <span className="label-icon">📅</span>
+                Vesting Duration
               </label>
               <input
                 type="number"
@@ -388,18 +338,18 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
                 className="input-enhanced"
                 required
               />
-              {/* Quick Presets */}
+              {/* Presets */}
               <div className="preset-buttons-row">
-                <button type="button" className={`preset-chip ${formData.durationDays === '30' ? 'active' : ''}`} onClick={() => handleDurationPreset(30)}>30d</button>
-                <button type="button" className={`preset-chip ${formData.durationDays === '90' ? 'active' : ''}`} onClick={() => handleDurationPreset(90)}>90d</button>
-                <button type="button" className={`preset-chip ${formData.durationDays === '180' ? 'active' : ''}`} onClick={() => handleDurationPreset(180)}>180d</button>
-                <button type="button" className={`preset-chip ${formData.durationDays === '365' ? 'active' : ''}`} onClick={() => handleDurationPreset(365)}>1yr</button>
+                <button type="button" className={`preset-chip ${formData.durationDays === '30' ? 'active' : ''}`} onClick={() => handleDurationPreset(30)}>30 Days</button>
+                <button type="button" className={`preset-chip ${formData.durationDays === '90' ? 'active' : ''}`} onClick={() => handleDurationPreset(90)}>90 Days</button>
+                <button type="button" className={`preset-chip ${formData.durationDays === '180' ? 'active' : ''}`} onClick={() => handleDurationPreset(180)}>6 Months</button>
+                <button type="button" className={`preset-chip ${formData.durationDays === '365' ? 'active' : ''}`} onClick={() => handleDurationPreset(365)}>1 Year</button>
               </div>
             </div>
 
             <div className="form-group">
               <label htmlFor="cliffDays">
-                <span className="label-icon icon-amber">🧊</span>
+                <span className="label-icon">🧊</span>
                 Cliff Period (Days)
               </label>
               <input
@@ -412,65 +362,55 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
                 onChange={handleChange}
                 className="input-enhanced"
               />
-              <small className="field-hint">Days before token release begins (0 for immediate)</small>
+              {/* Presets */}
+              <div className="preset-buttons-row">
+                <button type="button" className={`preset-chip ${formData.cliffDays === '0' ? 'active' : ''}`} onClick={() => handleCliffPreset(0)}>No Cliff</button>
+                <button type="button" className={`preset-chip ${formData.cliffDays === '30' ? 'active' : ''}`} onClick={() => handleCliffPreset(30)}>30 Days</button>
+                <button type="button" className={`preset-chip ${formData.cliffDays === '90' ? 'active' : ''}`} onClick={() => handleCliffPreset(90)}>90 Days</button>
+              </div>
             </div>
           </div>
 
-          {/* Error Alert */}
+          {/* Interactive Projection Box (Human Touch feature!) */}
+          <div className="projection-box">
+            <div className="projection-header">
+              <span>📊 Schedule Projection Preview</span>
+              <span className="rate-tag">~{scheduleProjection.dailyRate} XLM / Day</span>
+            </div>
+            <div className="projection-grid">
+              <div className="proj-item">
+                <span className="proj-label">Schedule Starts</span>
+                <strong className="proj-val">{scheduleProjection.startTimeStr}</strong>
+              </div>
+              <div className="proj-item">
+                <span className="proj-label">Cliff Unlock</span>
+                <strong className="proj-val text-amber">{scheduleProjection.cliffEndStr}</strong>
+              </div>
+              <div className="proj-item">
+                <span className="proj-label">Fully Vested</span>
+                <strong className="proj-val text-emerald">{scheduleProjection.endTimeStr}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Error Banner */}
           {error && (
-            <div className="alert alert-error" id="form-error">
+            <div className="alert alert-error animate-shake">
               <div className="alert-content">
                 <span className="alert-icon">⚠️</span>
                 <div>
                   <p style={{ margin: 0 }}>{error}</p>
-                  {(error.includes('Unfunded') || error.includes('Friendbot') || error.includes('Balance')) && (
+                  {(error.includes('Unfunded') || error.includes('Friendbot')) && (
                     <a
                       href="https://laboratory.stellar.org/#account-creator?network=testnet"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="friendbot-link-btn"
-                      style={{
-                        display: 'inline-block',
-                        marginTop: '10px',
-                        padding: '6px 14px',
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                        color: 'white',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                        fontSize: '0.82rem',
-                        textDecoration: 'none',
-                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
-                      }}
+                      className="friendbot-btn"
                     >
                       Fund Wallet on Testnet (Friendbot) ↗
                     </a>
                   )}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Success Alert */}
-          {success && (
-            <div className="alert alert-success" id="form-success">
-              <div className="alert-header-row">
-                <span className="alert-icon">🎉</span>
-                <strong>{success.message}</strong>
-              </div>
-              <div className="success-details">
-                <p className="plan-id-display mono">Assigned Plan ID: <strong>#{success.planId}</strong></p>
-                {success.txHash && (
-                  <p className="tx-hash-display mono">
-                    Transaction Explorer:{' '}
-                    <a
-                      href={`https://stellar.expert/explorer/testnet/tx/${success.txHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {success.txHash.substring(0, 10)}...{success.txHash.substring(success.txHash.length - 10)} ↗
-                    </a>
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -485,61 +425,120 @@ const CreateVestingForm = ({ wallet, onPlanCreated }) => {
             {loading ? (
               <>
                 <span className="btn-spinner" />
-                Signing & Submitting to Soroban...
+                Processing Transaction...
               </>
             ) : (
-              <>
-                <span className="btn-glow-layer"></span>
-                <span className="btn-text">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                  </svg>
-                  Create Vesting Schedule
-                </span>
-              </>
+              <>Create & Lock Vesting Schedule →</>
             )}
           </button>
         </form>
+      </div>
 
-        {/* How It Works Section */}
-        <div className="how-it-works">
-          <h3>
-            <span className="h3-sparkle">💡</span> How Token Vesting Works
-          </h3>
-          <div className="steps-grid">
-            <div className="step-card card-purple">
-              <div className="step-number">01</div>
-              <div className="step-body">
-                <strong>Lock XLM Tokens</strong>
-                <p>Tokens are transferred safely from your wallet to the Soroban contract.</p>
-              </div>
+      {/* 4-Step Creation Progress Modal */}
+      {loading && (
+        <div className="modal-backdrop">
+          <div className="modal-card progress-modal animate-scale-in">
+            <div className="modal-header">
+              <div className="step-loader-spinner" />
+              <h3>Creating Vesting Plan</h3>
+              <p className="modal-subtitle">Submitting smart contract transaction to Soroban Testnet...</p>
             </div>
-            <div className="step-card card-cyan">
-              <div className="step-number">02</div>
-              <div className="step-body">
-                <strong>Cliff Protection</strong>
-                <p>If set, tokens remain locked during the cliff period.</p>
+
+            <div className="progress-steps-list">
+              <div className={`step-item ${currentStep >= 1 ? (currentStep > 1 ? 'completed' : 'active') : ''}`}>
+                <div className="step-circle">{currentStep > 1 ? '✓' : '1'}</div>
+                <div className="step-text">
+                  <strong>Input & Account Verification</strong>
+                  <p>Checking wallet balance & beneficiary public key format</p>
+                </div>
               </div>
-            </div>
-            <div className="step-card card-emerald">
-              <div className="step-number">03</div>
-              <div className="step-body">
-                <strong>Linear Release</strong>
-                <p>Tokens unlock continuously second-by-second over duration.</p>
+
+              <div className={`step-item ${currentStep >= 2 ? (currentStep > 2 ? 'completed' : 'active') : ''}`}>
+                <div className="step-circle">{currentStep > 2 ? '✓' : '2'}</div>
+                <div className="step-text">
+                  <strong>Soroban Contract Simulation</strong>
+                  <p>Simulating create_vesting_plan on Soroban RPC</p>
+                </div>
               </div>
-            </div>
-            <div className="step-card card-amber">
-              <div className="step-number">04</div>
-              <div className="step-body">
-                <strong>Instant Claim</strong>
-                <p>Beneficiary claims unlocked XLM anytime directly from DApp.</p>
+
+              <div className={`step-item ${currentStep >= 3 ? (currentStep > 3 ? 'completed' : 'active') : ''}`}>
+                <div className="step-circle">{currentStep > 3 ? '✓' : '3'}</div>
+                <div className="step-text">
+                  <strong>Freighter Wallet Authorization</strong>
+                  <p>Please approve the signature popup in Freighter extension</p>
+                </div>
+              </div>
+
+              <div className={`step-item ${currentStep >= 4 ? (currentStep > 4 ? 'completed' : 'active') : ''}`}>
+                <div className="step-circle">{currentStep > 4 ? '✓' : '4'}</div>
+                <div className="step-text">
+                  <strong>Ledger Finalization</strong>
+                  <p>Broadcasting transaction to Stellar ledger</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Success Modal with direct View in Dashboard button */}
+      {successData && (
+        <div className="modal-backdrop">
+          <div className="modal-card success-modal animate-scale-in">
+            <div className="success-icon-banner">🎉</div>
+            <h3>Vesting Plan Created Successfully!</h3>
+            <p className="modal-subtitle">Your tokens are now locked inside the Soroban Token Vesting contract.</p>
+
+            <div className="success-info-card">
+              <div className="info-row">
+                <span>Assigned Plan ID</span>
+                <strong className="plan-id-tag">#{successData.planId}</strong>
+              </div>
+              <div className="info-row">
+                <span>Total Locked</span>
+                <strong>{successData.amount} XLM</strong>
+              </div>
+              <div className="info-row">
+                <span>Beneficiary</span>
+                <code className="mono">{successData.beneficiary.substring(0, 8)}...{successData.beneficiary.substring(successData.beneficiary.length - 6)}</code>
+              </div>
+              {successData.txHash && (
+                <div className="info-row">
+                  <span>Ledger Tx Hash</span>
+                  <a
+                    href={`https://stellar.expert/explorer/testnet/tx/${successData.txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tx-link-btn"
+                  >
+                    View on Stellar Expert ↗
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button
+                className="btn-cancel"
+                onClick={() => setSuccessData(null)}
+              >
+                Create Another Plan
+              </button>
+              <button
+                className="btn-confirm-vibrant"
+                onClick={() => {
+                  setSuccessData(null);
+                  if (onNavigateDashboard) onNavigateDashboard();
+                }}
+              >
+                View Plan in Dashboard →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default CreateVestingForm;

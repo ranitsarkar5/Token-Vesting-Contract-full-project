@@ -30,11 +30,12 @@ function App() {
         <div className="container header-inner">
           <div className="brand">
             <div className="brand-icon">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#brandGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#brandGrad)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <defs>
                   <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#818cf8" />
-                    <stop offset="100%" stopColor="#c084fc" />
+                    <stop offset="0%" stopColor="#10b981" />
+                    <stop offset="50%" stopColor="#06b6d4" />
+                    <stop offset="100%" stopColor="#6366f1" />
                   </linearGradient>
                 </defs>
                 <circle cx="12" cy="12" r="10" />
@@ -43,7 +44,7 @@ function App() {
             </div>
             <div>
               <h1 className="brand-name">Token Vesting Hub</h1>
-              <p className="brand-tag">Permissionless Vesting on Soroban</p>
+              <p className="brand-tag">Stellar Soroban Smart Contracts</p>
             </div>
           </div>
           <WalletConnect
@@ -66,7 +67,7 @@ function App() {
                 onClick={() => setActiveTab('dashboard')}
                 id="tab-dashboard"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="7" height="7" />
                   <rect x="14" y="3" width="7" height="7" />
                   <rect x="3" y="14" width="7" height="7" />
@@ -83,14 +84,24 @@ function App() {
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                Create Plan
+                Create Schedule
               </button>
             </nav>
 
             {/* Tab Content */}
             <div className="tab-content">
-              {activeTab === 'dashboard' && <VestingDashboard wallet={wallet} />}
-              {activeTab === 'create' && <CreateVestingForm wallet={wallet} />}
+              {activeTab === 'dashboard' && (
+                <VestingDashboard
+                  wallet={wallet}
+                  onNavigateCreate={() => setActiveTab('create')}
+                />
+              )}
+              {activeTab === 'create' && (
+                <CreateVestingForm
+                  wallet={wallet}
+                  onNavigateDashboard={() => setActiveTab('dashboard')}
+                />
+              )}
             </div>
           </div>
         </main>
@@ -100,41 +111,40 @@ function App() {
           <div className="container">
             <div className="hero-content">
               <div className="hero-badge">
-                <span className="badge-dot" /> Built on Stellar Soroban
+                <span className="badge-dot" /> Permissionless Smart Contracts on Stellar
               </div>
               <h2 className="hero-title">
-                Permissionless
-                <span className="gradient-text"> Token Vesting</span>
+                Automated Token
+                <span className="gradient-text"> Vesting & Lockups</span>
               </h2>
               <p className="hero-desc">
-                Create and manage vesting schedules with zero admin permissions.
-                Anyone can create plans, and any beneficiary can claim their tokens.
+                Stream XLM and custom Soroban tokens to team members, investors, and community beneficiaries with second-by-second linear release schedules.
               </p>
 
               <div className="feature-cards">
                 <div className="feature-card">
                   <div className="feature-icon">🔓</div>
                   <h3>Permissionless</h3>
-                  <p>No admin roles, no whitelists — anyone can create vesting plans</p>
+                  <p>No admin gates or approval queues — deploy schedules instantly on ledger</p>
                 </div>
                 <div className="feature-card">
                   <div className="feature-icon">⏳</div>
-                  <h3>Linear Vesting</h3>
-                  <p>Tokens vest linearly over time with an optional cliff period</p>
+                  <h3>Linear Stream</h3>
+                  <p>Continuous second-by-second unlock curve with optional cliff periods</p>
                 </div>
                 <div className="feature-card">
-                  <div className="feature-icon">💎</div>
-                  <h3>Multi-Token</h3>
-                  <p>Works with any Soroban token — bring your own token contract</p>
+                  <div className="feature-icon">⚡</div>
+                  <h3>1-Click Claims</h3>
+                  <p>Beneficiaries claim unlocked tokens directly into Freighter wallet</p>
                 </div>
                 <div className="feature-card">
-                  <div className="feature-icon">🔒</div>
-                  <h3>Immutable</h3>
-                  <p>Once created, plans cannot be modified or cancelled</p>
+                  <div className="feature-icon">🛡️</div>
+                  <h3>Audited Soroban</h3>
+                  <p>Immutable logic guaranteed by Rust smart contract execution</p>
                 </div>
               </div>
 
-              <p className="cta-hint">Connect your Freighter wallet to get started →</p>
+              <p className="cta-hint">Connect your Freighter wallet above to get started →</p>
             </div>
           </div>
         </main>
@@ -143,8 +153,8 @@ function App() {
       {/* Footer */}
       <footer className="app-footer">
         <div className="container footer-inner">
-          <p>© 2025 Token Vesting Hub</p>
-          <p>Powered by Stellar Soroban</p>
+          <p>© 2026 Token Vesting Hub</p>
+          <p>Powered by Stellar Soroban Testnet</p>
         </div>
       </footer>
     </div>
